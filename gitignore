@@ -1,0 +1,50 @@
+
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+.pub/
+build/
+flutter_*.png
+
+# iOS
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/ServiceDefinitions.json
+ios/Runner.xcworkspace
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+*.podspec
+
+# Android
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/local.properties
+*.iml
+.gradle/
+*.keystore
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# IntelliJ
+*.iml
+.idea/
+
+# Others
+*.log
+*.lock
+*.tmp
+*.swp
+*.DS_Store
+*.apk
+*.ipa
+*.jks
+.env
+
+# Firebase config
+google-services.json
+GoogleService-Info.plist
