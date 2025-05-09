@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+import 'package:chatzilla/config/theme/app_theme.dart';
 import 'package:chatzilla/core/common/custom_button.dart';
 import 'package:chatzilla/core/common/custom_text_field.dart';
 import 'package:flutter/material.dart';
@@ -47,7 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,61 +56,94 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Form(
           child: Column(
             children: [
-              const SizedBox(height: 30),
-              Text(
-                "Welcome Back",
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Login to your account",
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(color: Colors.grey),
-              ),
-              const SizedBox(height: 30),
-              CustomTextField(
-                controller: emailController,
-                hintText: "Email",
-                focusNode: _emailFocus,
-                validator: _validateEmail,
-                prefixIcon: const Icon(Icons.email_outlined),
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: passwordController,
-                focusNode: _passwordFocus,
-                validator: _validatePassword,
-                hintText: "Password",
-                prefixIcon: const Icon(Icons.lock_outline),
-                obscureText: !_isPasswordVisible,
-                suffixIcon: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    });
-                  },
-                  icon: Icon(
-                    _isPasswordVisible
-                        ? Icons.visibility_off
-                        : Icons.visibility,
+              const SizedBox(height: 170),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Welcome Back",
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Login to your account",
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 50),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                child: CustomTextField(
+                  controller: emailController,
+                  hintText: "Email",
+                  focusNode: _emailFocus,
+                  validator: _validateEmail,
+                  prefixIcon: const Icon(Icons.email_outlined),
+                ),
+              ),
               const SizedBox(height: 30),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                child: CustomTextField(
+                  controller: passwordController,
+                  focusNode: _passwordFocus,
+                  validator: _validatePassword,
+                  hintText: "Password",
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  obscureText: !_isPasswordVisible,
+                  suffixIcon: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 60),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                child: CustomButton(onPressed: () {}, text: "Login"),
+              ),
+              const SizedBox(height: 30),
+              Center(
+                child: RichText(
+                  text: TextSpan(
+                    text: "Don't have an account?  ",
+                    style: TextStyle(color: Colors.grey[600]),
+                    children: [
+                      TextSpan(
+                        text: "Sign Up",
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: CustomButton(
-          onPressed: () {
-            // handleSignIn();
-          },
-          text: "Login",
         ),
       ),
     );
