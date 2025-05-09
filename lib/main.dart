@@ -1,8 +1,18 @@
 import 'package:chatzilla/config/theme/app_theme.dart';
 import 'package:chatzilla/presentation/screens/auth/login_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.white, // or transparent if you prefer
+      statusBarBrightness: Brightness.light, // for iOS
+      statusBarIconBrightness: Brightness.dark, // for Android
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
   runApp(const MyApp());
 }
 
