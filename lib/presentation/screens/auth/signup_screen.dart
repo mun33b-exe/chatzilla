@@ -20,9 +20,43 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final _emailFocus = FocusNode();
+  final _nameFocus = FocusNode();
+  final _usernameFocus = FocusNode();
+  final _phoneFocus = FocusNode();
   final _passwordFocus = FocusNode();
   bool _isPasswordVisible = false;
 
+  
+
+  void dispose() {
+    emailController.dispose();
+    nameController.dispose();
+    usernameController.dispose();
+    phoneController.dispose();
+    passwordController.dispose();
+    _nameFocus.dispose();
+    _usernameFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _phoneFocus.dispose();
+    super.dispose();
+  }
+
+  String? _validateName(String? value) {
+    if (value == null || value.isEmpty) {
+      return "Please enter your full name";
+    }
+    return null;
+  }
+
+  String? _validateUsername(String? value) {
+    if (value == null || value.isEmpty) {
+      return "Please enter your username";
+    }
+    return null;
+  }
+
+  // Email validation
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter your email address';
@@ -34,6 +68,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
+  // Password validation
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a password';
@@ -44,13 +79,17 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
-  void dispose() {
-    emailController.dispose();
-    nameController.dispose();
-    usernameController.dispose();
-    phoneController.dispose();
-    passwordController.dispose();
-    super.dispose();
+  // Phone validation
+  String? _validatePhone(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your phone number';
+    }
+
+    final phoneRegex = RegExp(r'^\+?[\d\s-]{10,}$');
+    if (!phoneRegex.hasMatch(value)) {
+      return 'Please enter a valid phone number (e.g., +1234567890)';
+    }
+    return null;
   }
 
   @override
@@ -153,7 +192,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 60),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                  child: CustomButton(onPressed: () {}, text: "Sign Up"),
+                  child: CustomButton(
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            // Perform signup action
+                          }
+                        },
+                        text: "Sign Up",
+                      ),
                 ),
                 const SizedBox(height: 20),
                 Center(
@@ -175,7 +221,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const LoginScreen(),
+                                      builder:
+                                          (context) => const LoginScreen(),
                                     ),
                                   );
                                 },
