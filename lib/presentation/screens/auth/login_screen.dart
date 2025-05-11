@@ -1,4 +1,6 @@
+import 'package:chatzilla/data/services/service_locator.dart';
 import 'package:chatzilla/presentation/screens/auth/signup_screen.dart';
+import 'package:chatzilla/router/app_router.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:chatzilla/config/theme/app_theme.dart';
@@ -66,7 +68,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       "Welcome Back",
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryColor,
                       ),
@@ -143,12 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               TapGestureRecognizer()
                                 ..onTap = () {
                                   // Navigate to the signup screen
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const SignupScreen(),
-                                    ),
-                                  );
+                                  getIt<AppRouter>().push(const SignupScreen());
                                 },
                         ),
                       ],
