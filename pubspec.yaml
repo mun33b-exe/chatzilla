@@ -42,8 +42,15 @@ dependencies:
   equatable: ^2.0.7
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
   flutter_test:
     sdk: flutter
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo/chatzilla_logo.png"
+  adaptive_icon_background: "#1F2A44"  # This is your primary color
+  adaptive_icon_foreground: "assets/logo/chatzilla_logo.png"
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -62,6 +69,19 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/images/chatzilla_logo.png
+
+
+  fonts:
+  - family: Billabong
+    fonts:
+      - asset: assets/fonts/Billabong.ttf
+
+
+
+
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -92,4 +112,3 @@ flutter:
   #         weight: 700
   #
   # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package

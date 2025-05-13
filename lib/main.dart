@@ -1,3 +1,4 @@
+import 'package:chatzilla/SplashScreen.dart';
 import 'package:chatzilla/config/theme/app_theme.dart';
 import 'package:chatzilla/data/services/service_locator.dart';
 import 'package:chatzilla/firebase_options.dart';
@@ -9,14 +10,6 @@ import 'package:flutter/services.dart';
 
 void main() async {
   await setupServiceLocator();
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.white, // or transparent if you prefer
-      statusBarBrightness: Brightness.light, // for iOS
-      statusBarIconBrightness: Brightness.dark, // for Android
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
-  );
   runApp(const MyApp());
 }
 
@@ -31,7 +24,7 @@ class MyApp extends StatelessWidget {
       navigatorKey: getIt<AppRouter>().navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: LoginScreen(),
+      home: SplashScreen(),
     );
   }
 }
