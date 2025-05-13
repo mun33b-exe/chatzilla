@@ -112,3 +112,11 @@ flutter:
   #         weight: 700
   #
   # For details regarding fonts from package dependencies,
+<<<<<<<<< Temporary merge branch 1
+  # see https://flutter.dev/to/font-from-package
+=========
+  # see https://flutter.dev/to/font-from-package
+
+
+
+>>>>>>>>> Temporary merge branch 2
