@@ -88,7 +88,7 @@ class _SignupScreenState extends State<SignupScreen> {
       return 'Please enter your phone number';
     }
 
-    final phoneRegex = RegExp(r'^\+?[\d\s-]{13,}$');
+    final phoneRegex = RegExp(r'^\+?[\d\s-]{12,}$');
     if (!phoneRegex.hasMatch(value)) {
       return 'Please enter a valid phone number (e.g., +92315XXXXXXX)';
     }
