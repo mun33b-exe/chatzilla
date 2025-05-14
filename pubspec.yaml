@@ -40,6 +40,9 @@ dependencies:
   get_it: ^8.0.3
   flutter_bloc: ^9.1.1
   equatable: ^2.0.7
+  flutter_contacts: ^1.1.9+2
+  intl: ^0.20.2
+  emoji_picker_flutter: ^4.3.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1

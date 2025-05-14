@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chatzilla/data/repositories/auth_repository.dart';
 import 'package:chatzilla/data/services/service_locator.dart';
 import 'package:chatzilla/logic/cubit/auth/auth_state.dart';
+import 'package:chatzilla/router/app_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
