@@ -14,8 +14,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ChatMessageScreen extends StatefulWidget {
   final String receiverId;
   final String receiverName;
-  const ChatMessageScreen(
-      {super.key, required this.receiverId, required this.receiverName});
+  const ChatMessageScreen({
+    super.key,
+    required this.receiverId,
+    required this.receiverName,
+  });
 
   @override
   State<ChatMessageScreen> createState() => _ChatMessageScreenState();
@@ -43,7 +46,9 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
     final messageText = messageController.text.trim();
     messageController.clear();
     await _chatCubit.sendMessage(
-        content: messageText, receiverId: widget.receiverId);
+      content: messageText,
+      receiverId: widget.receiverId,
+    );
   }
 
   void _onScroll() {
@@ -69,8 +74,11 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      _scrollController.animateTo(0,
-          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     }
   }
 
@@ -93,114 +101,128 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: Theme.of(context).scaffoldBackgroundColor,
+        ),
+        backgroundColor: Theme.of(context).primaryColor,
+        elevation: 0,
         title: Row(
           children: [
             CircleAvatar(
-              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-              child: Text(widget.receiverName[0].toUpperCase()),
+              backgroundColor: Theme.of(context).primaryColorDark,
+              child: Text(
+                widget.receiverName[0].toUpperCase(),
+                style: TextStyle(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  fontSize: 20,
+                ),
+              ),
             ),
-            const SizedBox(
-              width: 12,
-            ),
+            const SizedBox(width: 18),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.receiverName),
+                Text(
+                  widget.receiverName,
+                  style: const TextStyle(
+                    color: Color(0xFFF9F7F1),
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 4),
                 BlocBuilder<ChatCubit, ChatState>(
-                    bloc: _chatCubit,
-                    builder: (context, state) {
-                      if (state.isReceiverTyping) {
-                        return Row(
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.only(right: 4),
-                              child: const LoadingDots(),
+                  bloc: _chatCubit,
+                  builder: (context, state) {
+                    if (state.isReceiverTyping) {
+                      return Row(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(right: 4),
+                            child: const LoadingDots(),
+                          ),
+                          Text(
+                            "typing",
+                            style: TextStyle(
+                              color: Theme.of(context).scaffoldBackgroundColor,
                             ),
-                            Text(
-                              "typing",
-                              style: TextStyle(
-                                color: Theme.of(context).primaryColor,
-                              ),
-                            )
-                          ],
-                        );
-                      }
-                      if (state.isReceiverOnline) {
-                        return const Text(
-                          "Online",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.green,
                           ),
-                        );
-                      }
-                      if (state.receiverLastSeen != null) {
-                        final lastSeen = state.receiverLastSeen!.toDate();
-                        return Text(
-                          "last seen at ${DateFormat('h:mm a').format(lastSeen)}",
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        );
-                      }
-                      return const SizedBox();
-                    })
+                        ],
+                      );
+                    }
+                    if (state.isReceiverOnline) {
+                      return const Text(
+                        "Online",
+                        style: TextStyle(fontSize: 14, color: Colors.green),
+                      );
+                    }
+                    if (state.receiverLastSeen != null) {
+                      final lastSeen = state.receiverLastSeen!.toDate();
+                      return Text(
+                        "last seen at ${DateFormat('h:mm a').format(lastSeen)}",
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      );
+                    }
+                    return const SizedBox();
+                  },
+                ),
               ],
             ),
           ],
         ),
         actions: [
           BlocBuilder<ChatCubit, ChatState>(
-              bloc: _chatCubit,
-              builder: (context, state) {
-                if (state.isUserBlocked) {
-                  return TextButton.icon(
-                    onPressed: () => _chatCubit.unBlockUser(widget.receiverId),
-                    label: const Text(
-                      "Unblock",
-                    ),
-                    icon: const Icon(Icons.block),
-                  );
-                }
-                return PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (value) async {
-                    if (value == "block") {
-                      final bool? confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text(
-                              "Are you sure you want to block ${widget.receiverName}"),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              child: const Text("Cancel"),
+            bloc: _chatCubit,
+            builder: (context, state) {
+              if (state.isUserBlocked) {
+                return TextButton.icon(
+                  onPressed: () => _chatCubit.unBlockUser(widget.receiverId),
+                  label: const Text("Unblock"),
+                  icon: const Icon(Icons.block),
+                );
+              }
+              return PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) async {
+                  if (value == "block") {
+                    final bool? confirm = await showDialog<bool>(
+                      context: context,
+                      builder:
+                          (context) => AlertDialog(
+                            title: Text(
+                              "Are you sure you want to block ${widget.receiverName}",
                             ),
-                            TextButton(
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                child: const Text("Cancel"),
+                              ),
+                              TextButton(
                                 onPressed: () => Navigator.pop(context, true),
                                 child: const Text(
                                   "Block",
                                   style: TextStyle(color: Colors.red),
-                                ))
-                          ],
-                        ),
-                      );
-                      if (confirm == true) {
-                        await _chatCubit.blockUser(widget.receiverId);
-                      }
+                                ),
+                              ),
+                            ],
+                          ),
+                    );
+                    if (confirm == true) {
+                      await _chatCubit.blockUser(widget.receiverId);
                     }
-                  },
-                  itemBuilder: (context) => <PopupMenuEntry<String>>[
-                    const PopupMenuItem(
-                      value: 'block',
-                      child: Text("Block User"),
-                    )
-                  ],
-                );
-              })
+                  }
+                },
+                itemBuilder:
+                    (context) => <PopupMenuEntry<String>>[
+                      const PopupMenuItem(
+                        value: 'block',
+                        child: Text("Block User"),
+                      ),
+                    ],
+              );
+            },
+          ),
         ],
       ),
       body: BlocConsumer<ChatCubit, ChatState>(
@@ -213,9 +235,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (state.status == ChatStatus.error) {
-            Center(
-              child: Text(state.error ?? "Something went wrong"),
-            );
+            Center(child: Text(state.error ?? "Something went wrong"));
           }
           return Column(
             children: [
@@ -226,9 +246,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                   child: Text(
                     "You have been blocked by ${widget.receiverName}",
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.red,
-                    ),
+                    style: const TextStyle(color: Colors.red),
                   ),
                 ),
               Expanded(
@@ -262,9 +280,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                             },
                             icon: const Icon(Icons.emoji_emotions),
                           ),
-                          const SizedBox(
-                            width: 8,
-                          ),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
                               onTap: () {
@@ -281,7 +297,9 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                                 hintText: "Type a message",
                                 filled: true,
                                 contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(24),
                                   borderSide: BorderSide.none,
@@ -290,31 +308,31 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(
-                            width: 8,
-                          ),
+                          const SizedBox(width: 8),
                           IconButton(
                             onPressed: _isComposing ? _handleSendMessage : null,
                             icon: Icon(
                               Icons.send,
-                              color: _isComposing
-                                  ? Theme.of(context).primaryColor
-                                  : Colors.grey,
+                              color:
+                                  _isComposing
+                                      ? Theme.of(context).primaryColor
+                                      : Colors.grey,
                             ),
-                          )
+                          ),
                         ],
                       ),
                       if (_showEmoji)
                         SizedBox(
                           height: 250,
-                          child: EmojiPicker(
+                          child: EmojiPicker( 
                             textEditingController: messageController,
                             onEmojiSelected: (category, emoji) {
                               messageController
                                 ..text += emoji.emoji
                                 ..selection = TextSelection.fromPosition(
                                   TextPosition(
-                                      offset: messageController.text.length),
+                                    offset: messageController.text.length,
+                                  ),
                                 );
                               setState(() {
                                 _isComposing =
@@ -358,7 +376,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                         ),
                     ],
                   ),
-                )
+                ),
             ],
           );
         },
@@ -390,12 +408,12 @@ class MessageBubble extends StatelessWidget {
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-            color: isMe
-                ? Theme.of(context).primaryColor
-                : Theme.of(context).primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(
-              16,
-            )),
+          color:
+              isMe
+                  ? Theme.of(context).primaryColor
+                  : Theme.of(context).primaryColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Column(
           crossAxisAlignment:
               isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -412,19 +430,18 @@ class MessageBubble extends StatelessWidget {
                   style: TextStyle(color: isMe ? Colors.white : Colors.black),
                 ),
                 if (isMe) ...[
-                  const SizedBox(
-                    width: 4,
-                  ),
+                  const SizedBox(width: 4),
                   Icon(
                     Icons.done_all,
                     size: 14,
-                    color: message.status == MessageStatus.read
-                        ? Colors.red
-                        : Colors.white70,
-                  )
-                ]
+                    color:
+                        message.status == MessageStatus.read
+                            ? Colors.red
+                            : Colors.white70,
+                  ),
+                ],
               ],
-            )
+            ),
           ],
         ),
       ),
