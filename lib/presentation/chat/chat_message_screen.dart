@@ -110,6 +110,9 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
           children: [
             CircleAvatar(
               backgroundColor: Theme.of(context).primaryColorDark,
+              foregroundImage: NetworkImage(
+                "https://ui-avatars.com/api/?name=${widget.receiverName}&background=${Theme.of(context).primaryColorDark.value.toRadixString(16).substring(2)}&color=fff",
+              ),
               child: Text(
                 widget.receiverName[0].toUpperCase(),
                 style: TextStyle(
@@ -118,7 +121,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 18),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,6 +139,10 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                   BlocBuilder<ChatCubit, ChatState>(
                     bloc: _chatCubit,
                     builder: (context, state) {
+                      // Hide activity status if either user is blocked
+                      if (state.amIBlocked || state.isUserBlocked) {
+                        return const SizedBox.shrink();
+                      }
                       if (state.isReceiverTyping) {
                         return Row(
                           children: [
@@ -185,6 +192,10 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                 return TextButton.icon(
                   onPressed: () => _chatCubit.unBlockUser(widget.receiverId),
                   label: const Text("Unblock"),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
                   icon: const Icon(Icons.block),
                 );
               }
@@ -245,147 +256,168 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
           if (state.status == ChatStatus.error) {
             Center(child: Text(state.error ?? "Something went wrong"));
           }
-          return Column(
-            children: [
-              if (state.amIBlocked)
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  color: Colors.red.withOpacity(0.1),
-                  child: Text(
-                    "You have been blocked by ${widget.receiverName}",
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red),
+          return Container(
+            color: const Color(0xFFECF2F4), // Set chat background color here
+            child: Column(
+              children: [
+                if (state.amIBlocked)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    color: Colors.red.withOpacity(0.1),
+                    child: Text(
+                      "You have been blocked by ${widget.receiverName}",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    reverse: true,
+                    itemCount: state.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = state.messages[index];
+                      final isMe = message.senderId == _chatCubit.currentUserId;
+                      return MessageBubble(message: message, isMe: isMe);
+                    },
                   ),
                 ),
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  reverse: true,
-                  itemCount: state.messages.length,
-                  itemBuilder: (context, index) {
-                    final message = state.messages[index];
-
-                    final isMe = message.senderId == _chatCubit.currentUserId;
-                    return MessageBubble(message: message, isMe: isMe);
-                  },
-                ),
-              ),
-              if (!state.amIBlocked && !state.isUserBlocked)
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
-                    children: [
-                      Row(
+                if (!state.amIBlocked && !state.isUserBlocked)
+                  Container(
+                    color: Theme.of(context).primaryColor,
+                    padding: const EdgeInsets.only(
+                      left: 8,
+                      right: 8,
+                      top: 8,
+                      bottom: 16,
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _showEmoji = !_showEmoji;
-                                if (_showEmoji) {
-                                  FocusScope.of(context).unfocus();
-                                }
-                              });
-                            },
-                            icon: const Icon(Icons.emoji_emotions),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  onTap: () {
+                                    if (_showEmoji) {
+                                      setState(() {
+                                        _showEmoji = false;
+                                      });
+                                    }
+                                  },
+                                  controller: messageController,
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                  keyboardType: TextInputType.multiline,
+                                  decoration: InputDecoration(
+                                    hintText: "Type a message",
+                                    filled: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 14,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    fillColor: Theme.of(context).cardColor,
+                                    suffixIcon: IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _showEmoji = !_showEmoji;
+                                          if (_showEmoji) {
+                                            FocusScope.of(context).unfocus();
+                                          }
+                                        });
+                                      },
+                                      icon: const Icon(Icons.emoji_emotions),
+                                      color: Theme.of(context).primaryColorDark,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: _isComposing ? _handleSendMessage : null,
+                                child: CircleAvatar(
+                                  backgroundColor:
+                                      Theme.of(context).primaryColorDark,
+                                  radius: 22,
+                                  child: Icon(
+                                    Icons.send,
+                                    color: Theme.of(context).primaryColor,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              onTap: () {
-                                if (_showEmoji) {
+                          if (_showEmoji)
+                            SizedBox(
+                              height: 250,
+                              child: EmojiPicker(
+                                onEmojiSelected: (category, emoji) {
+                                  messageController
+                                    ..text += emoji.emoji
+                                    ..selection = TextSelection.fromPosition(
+                                      TextPosition(
+                                        offset: messageController.text.length,
+                                      ),
+                                    );
                                   setState(() {
-                                    _showEmoji = false;
+                                    _isComposing =
+                                        messageController.text.isNotEmpty;
                                   });
-                                }
-                              },
-                              controller: messageController,
-                              textCapitalization: TextCapitalization.sentences,
-                              keyboardType: TextInputType.multiline,
-                              decoration: InputDecoration(
-                                hintText: "Type a message",
-                                filled: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
+                                },
+                                config: Config(
+                                  height: 250,
+                                  emojiViewConfig: EmojiViewConfig(
+                                    columns: 7,
+                                    emojiSizeMax:
+                                        32.0 * (Platform.isIOS ? 1.30 : 1.0),
+                                    verticalSpacing: 0,
+                                    horizontalSpacing: 0,
+                                    gridPadding: EdgeInsets.zero,
+                                    backgroundColor:
+                                        Theme.of(
+                                          context,
+                                        ).scaffoldBackgroundColor,
+                                    loadingIndicator: const SizedBox.shrink(),
+                                  ),
+                                  categoryViewConfig: const CategoryViewConfig(
+                                    initCategory: Category.RECENT,
+                                  ),
+                                  bottomActionBarConfig: BottomActionBarConfig(
+                                    enabled: true,
+                                    backgroundColor:
+                                        Theme.of(
+                                          context,
+                                        ).scaffoldBackgroundColor,
+                                    buttonColor: Theme.of(context).primaryColor,
+                                  ),
+                                  skinToneConfig: const SkinToneConfig(
+                                    enabled: true,
+                                    dialogBackgroundColor: Colors.white,
+                                    indicatorColor: Colors.grey,
+                                  ),
+                                  searchViewConfig: SearchViewConfig(
+                                    backgroundColor:
+                                        Theme.of(
+                                          context,
+                                        ).scaffoldBackgroundColor,
+                                    buttonIconColor:
+                                        Theme.of(context).primaryColor,
+                                  ),
                                 ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: BorderSide.none,
-                                ),
-                                fillColor: Theme.of(context).cardColor,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: _isComposing ? _handleSendMessage : null,
-                            icon: Icon(
-                              Icons.send,
-                              color:
-                                  _isComposing
-                                      ? Theme.of(context).primaryColor
-                                      : Colors.grey,
-                            ),
-                          ),
                         ],
                       ),
-                      if (_showEmoji)
-                        SizedBox(
-                          height: 250,
-                          child: EmojiPicker(
-                            textEditingController: messageController,
-                            onEmojiSelected: (category, emoji) {
-                              messageController
-                                ..text += emoji.emoji
-                                ..selection = TextSelection.fromPosition(
-                                  TextPosition(
-                                    offset: messageController.text.length,
-                                  ),
-                                );
-                              setState(() {
-                                _isComposing =
-                                    messageController.text.isNotEmpty;
-                              });
-                            },
-                            config: Config(
-                              height: 250,
-                              emojiViewConfig: EmojiViewConfig(
-                                columns: 7,
-                                emojiSizeMax:
-                                    32.0 * (Platform.isIOS ? 1.30 : 1.0),
-                                verticalSpacing: 0,
-                                horizontalSpacing: 0,
-                                gridPadding: EdgeInsets.zero,
-                                backgroundColor:
-                                    Theme.of(context).scaffoldBackgroundColor,
-                                loadingIndicator: const SizedBox.shrink(),
-                              ),
-                              categoryViewConfig: const CategoryViewConfig(
-                                initCategory: Category.RECENT,
-                              ),
-                              bottomActionBarConfig: BottomActionBarConfig(
-                                enabled: true,
-                                backgroundColor:
-                                    Theme.of(context).scaffoldBackgroundColor,
-                                buttonColor: Theme.of(context).primaryColor,
-                              ),
-                              skinToneConfig: const SkinToneConfig(
-                                enabled: true,
-                                dialogBackgroundColor: Colors.white,
-                                indicatorColor: Colors.grey,
-                              ),
-                              searchViewConfig: SearchViewConfig(
-                                backgroundColor:
-                                    Theme.of(context).scaffoldBackgroundColor,
-                                buttonIconColor: Theme.of(context).primaryColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           );
         },
       ),
@@ -444,7 +476,7 @@ class MessageBubble extends StatelessWidget {
                     size: 14,
                     color:
                         message.status == MessageStatus.read
-                            ? Colors.red
+                            ? Theme.of(context).primaryColorDark
                             : Colors.white70,
                   ),
                 ],
