@@ -119,53 +119,61 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
               ),
             ),
             const SizedBox(width: 18),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.receiverName,
-                  style: const TextStyle(
-                    color: Color(0xFFF9F7F1),
-                    fontSize: 18,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.receiverName,
+                    style: const TextStyle(
+                      color: Color(0xFFF9F7F1),
+                      fontSize: 18,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
-                ),
-                const SizedBox(height: 4),
-                BlocBuilder<ChatCubit, ChatState>(
-                  bloc: _chatCubit,
-                  builder: (context, state) {
-                    if (state.isReceiverTyping) {
-                      return Row(
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(right: 4),
-                            child: const LoadingDots(),
-                          ),
-                          Text(
-                            "typing",
-                            style: TextStyle(
-                              color: Theme.of(context).scaffoldBackgroundColor,
+                  const SizedBox(height: 4),
+                  BlocBuilder<ChatCubit, ChatState>(
+                    bloc: _chatCubit,
+                    builder: (context, state) {
+                      if (state.isReceiverTyping) {
+                        return Row(
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(right: 4),
+                              child: const LoadingDots(),
                             ),
+                            Text(
+                              "typing",
+                              style: TextStyle(
+                                color:
+                                    Theme.of(context).scaffoldBackgroundColor,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      if (state.isReceiverOnline) {
+                        return const Text(
+                          "Online",
+                          style: TextStyle(fontSize: 14, color: Colors.green),
+                        );
+                      }
+                      if (state.receiverLastSeen != null) {
+                        final lastSeen = state.receiverLastSeen!.toDate();
+                        return Text(
+                          "last seen at ${DateFormat('h:mm a').format(lastSeen)}",
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
                           ),
-                        ],
-                      );
-                    }
-                    if (state.isReceiverOnline) {
-                      return const Text(
-                        "Online",
-                        style: TextStyle(fontSize: 14, color: Colors.green),
-                      );
-                    }
-                    if (state.receiverLastSeen != null) {
-                      final lastSeen = state.receiverLastSeen!.toDate();
-                      return Text(
-                        "last seen at ${DateFormat('h:mm a').format(lastSeen)}",
-                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                      );
-                    }
-                    return const SizedBox();
-                  },
-                ),
-              ],
+                        );
+                      }
+                      return const SizedBox();
+                    },
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -324,7 +332,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                       if (_showEmoji)
                         SizedBox(
                           height: 250,
-                          child: EmojiPicker( 
+                          child: EmojiPicker(
                             textEditingController: messageController,
                             onEmojiSelected: (category, emoji) {
                               messageController
