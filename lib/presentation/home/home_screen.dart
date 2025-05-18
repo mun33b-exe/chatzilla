@@ -63,10 +63,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         final contact = contacts[index];
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).primaryColor.withOpacity(0.1),
+                            backgroundColor: Theme.of(context).primaryColorDark,
                             child: Text(contact["name"][0].toUpperCase()),
+                            foregroundImage: NetworkImage(
+                              "https://ui-avatars.com/api/?name=${contact["name"]}&background=${Theme.of(context).primaryColorDark.value.toRadixString(16).substring(2)}&color=fff",
+                            ),
                           ),
                           title: Text(contact["name"]),
                           onTap: () {
