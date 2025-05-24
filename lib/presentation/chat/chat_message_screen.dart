@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:chatzilla/data/models/chat_message.dart';
+import 'package:chatzilla/data/repositories/chat_repository.dart';
 import 'package:chatzilla/data/services/service_locator.dart';
 import 'package:chatzilla/logic/cubit/chat/chat_cubit.dart';
 import 'package:chatzilla/logic/cubit/chat/chat_state.dart';
@@ -35,11 +36,23 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
   @override
   void initState() {
     _chatCubit = getIt<ChatCubit>();
-    print("recervier id ${widget.receiverId}");
+    print("receiver id ${widget.receiverId}");
     _chatCubit.enterChat(widget.receiverId);
     messageController.addListener(_onTextChanged);
     _scrollController.addListener(_onScroll);
+
+    _setUserOnline();
+
     super.initState();
+  }
+
+  void _setUserOnline() async {
+    try {
+      final currentUserId = _chatCubit.currentUserId;
+      await getIt<ChatRepository>().updateOnlineStatus(currentUserId, true);
+    } catch (e) {
+      print("Error setting user online: $e");
+    }
   }
 
   Future<void> _handleSendMessage() async {
@@ -52,7 +65,6 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
   }
 
   void _onScroll() {
-    //load more messages when reaching to top
 
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
@@ -94,6 +106,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
     messageController.dispose();
     _scrollController.dispose();
     _chatCubit.leaveChat();
+
     super.dispose();
   }
 
@@ -158,6 +171,22 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                               ),
                             ),
                           ],
+                        );
+                      }
+                      if (state.isReceiverOnline) {
+                        return const Text(
+                          "Online ",
+                          style: TextStyle(fontSize: 14, color: Colors.green),
+                        );
+                      }
+                      if (state.receiverLastSeen != null) {
+                        final lastSeen = state.receiverLastSeen!.toDate();
+                        return Text(
+                          "last seen at ${DateFormat('h:mm a').format(lastSeen)}",
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
                         );
                       }
                       return const SizedBox();
