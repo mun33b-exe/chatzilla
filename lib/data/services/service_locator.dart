@@ -15,21 +15,18 @@ final getIt = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   getIt.registerLazySingleton(() => AppRouter());
   getIt.registerLazySingleton<FirebaseFirestore>(
-      () => FirebaseFirestore.instance);
+    () => FirebaseFirestore.instance,
+  );
   getIt.registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance);
   getIt.registerLazySingleton(() => AuthRepository());
   getIt.registerLazySingleton(() => ContactRepository());
   getIt.registerLazySingleton(() => ChatRepository());
   getIt.registerLazySingleton(
-    () => AuthCubit(
-      authRepository: AuthRepository(),
-    ),
+    () => AuthCubit(authRepository: AuthRepository()),
   );
   getIt.registerFactory(
     () => ChatCubit(

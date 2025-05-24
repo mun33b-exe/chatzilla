@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Define the primary color
-  static const primaryColor = Color(0xFF1F2A44); // Midnight Blue
+    
+  static const primaryColor = Color(0xFF1F2A44);   
 
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
 
-    // Colors
+      
     colorScheme: const ColorScheme.light(
       primary: primaryColor,
-      secondary: Color(0xFFA0A0A0), // Cool Gray
-      surface: Color(0xFFF9F7F1), // Soft Cream
+      secondary: Color(0xFFA0A0A0),   
+      surface: Color(0xFFF9F7F1),   
       onSurface: Colors.black,
-      tertiary: Color(0xFFD4AF37), // Luxe Gold
-      onPrimary: Colors.white, // White text on dark bubble
+      tertiary: Color(0xFFD4AF37),   
+      onPrimary: Colors.white,   
     ),
 
-    // AppBar Theme
+      
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFFF9F7F1),
       elevation: 0,
@@ -31,7 +31,7 @@ class AppTheme {
       iconTheme: IconThemeData(color: Colors.black),
     ),
 
-    // Input Decoration
+      
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: primaryColor.withOpacity(0.08),
@@ -57,7 +57,7 @@ class AppTheme {
       ),
     ),
 
-    // Message Bubbles
+      
     cardTheme: CardTheme(
       color: primaryColor.withOpacity(0.08),
       elevation: 0,
@@ -66,13 +66,13 @@ class AppTheme {
       ),
     ),
 
-    // Icons
+      
     iconTheme: const IconThemeData(
       color: Colors.black87,
       size: 24,
     ),
 
-    // Text Themes
+      
     textTheme: const TextTheme(
       titleLarge: TextStyle(
         fontSize: 18,
@@ -89,11 +89,11 @@ class AppTheme {
       ),
       labelMedium: TextStyle(
         fontSize: 12,
-        color: Color(0xFFA0A0A0), // Cool Gray
+        color: Color(0xFFA0A0A0),   
       ),
     ),
 
-    // Button Theme
+      
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,

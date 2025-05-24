@@ -15,7 +15,7 @@ class ChatRepository extends BaseRepository {
     String currentUserId,
     String otherUserId,
   ) async {
-    // Prevent creating a chat room with yourself
+      
     if (currentUserId == otherUserId) {
       throw Exception("Cannot create a chat room with yourself");
     }
@@ -61,15 +61,15 @@ class ChatRepository extends BaseRepository {
     required String content,
     MessageType type = MessageType.text,
   }) async {
-    //batch
+      
     final batch = firestore.batch();
 
-    //get message sub collection
+      
 
     final messageRef = getChatRoomMessages(chatRoomId);
     final messageDoc = messageRef.doc();
 
-    //chatmessage
+      
 
     final message = ChatMessage(
       id: messageDoc.id,
@@ -82,10 +82,10 @@ class ChatRepository extends BaseRepository {
       readBy: [senderId],
     );
 
-    //add message to sub collection
+      
     batch.set(messageDoc, message.toMap());
 
-    //update chatroom
+      
 
     batch.update(_chatRooms.doc(chatRoomId), {
       "lastMessage": content,
@@ -95,7 +95,7 @@ class ChatRepository extends BaseRepository {
     await batch.commit();
   }
 
-  //a--> b
+    
   Stream<List<ChatMessage>> getMessages(
     String chatRoomId, {
     DocumentSnapshot? lastDocument,
@@ -151,7 +151,7 @@ class ChatRepository extends BaseRepository {
     try {
       final batch = firestore.batch();
 
-      //get all unread messages where user is receviver
+        
 
       final unreadMessages =
           await getChatRoomMessages(chatRoomId)

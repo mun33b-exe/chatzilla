@@ -34,7 +34,7 @@ class ChatListTile extends StatelessWidget {
       orElse: () => 'Unknown User',
     );
 
-    // Format last message time if available
+      
     String? lastMessageTime;
     if (chat.lastMessageTime != null) {
       final dt =
@@ -124,7 +124,7 @@ class ChatListTile extends StatelessWidget {
         const Divider(
           height: 0,
           thickness: 2,
-          indent: 20, // aligns with the text, after avatar
+          indent: 20,   
           endIndent: 20,
           color: Color(0xFFE0E0E0),
         ),

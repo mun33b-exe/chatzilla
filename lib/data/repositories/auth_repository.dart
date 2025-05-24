@@ -34,7 +34,7 @@ class AuthRepository extends BaseRepository {
       if (userCredential.user == null) {
         throw "Failed to create user";
       }
-      //create user model and save the user in the db firestore
+        
 
       final user = UserModel(
         uid: userCredential.user!.uid,

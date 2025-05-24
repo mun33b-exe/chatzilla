@@ -15,11 +15,11 @@ class AppLifeCycleObserver extends WidgetsBindingObserver {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
-        // Set user offline when app goes to background
+          
         chatRepository.updateOnlineStatus(userId, false);
         break;
       case AppLifecycleState.resumed:
-        // Set user online when app comes to foreground
+          
         chatRepository.updateOnlineStatus(userId, true);
         break;
       default:

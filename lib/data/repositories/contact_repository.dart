@@ -8,7 +8,7 @@ class ContactRepository extends BaseRepository {
 
   String normalize(String number) {
     final digits = number.replaceAll(RegExp(r'[^\d]'), '');
-    // For Pakistan, mobile numbers are 10 or 11 digits (without country code)
+      
     return digits.length > 10 ? digits.substring(digits.length - 10) : digits;
   }
 
@@ -24,13 +24,13 @@ class ContactRepository extends BaseRepository {
         return [];
       }
 
-      // Get device contacts with phone numbers
+        
       final contacts = await FlutterContacts.getContacts(
         withProperties: true,
         withPhoto: true,
       );
 
-      // Extract phone numbers and normalize them
+        
       final phoneNumbers =
           contacts
               .where((contact) => contact.phones.isNotEmpty)
@@ -38,12 +38,12 @@ class ContactRepository extends BaseRepository {
                 (contact) => {
                   'name': contact.displayName,
                   'phoneNumber': normalize(contact.phones.first.number),
-                  'photo': contact.photo, // Store contact photo if available
+                  'photo': contact.photo,   
                 },
               )
               .toList();
 
-      // Get all users from Firestore
+        
       final usersSnapshot = await firestore.collection('users').get();
 
       final registeredUsers =
@@ -51,7 +51,7 @@ class ContactRepository extends BaseRepository {
               .map((doc) => UserModel.fromFirestore(doc))
               .toList();
 
-      // Match contacts with registered users
+        
       final matchedContacts =
           phoneNumbers
               .where((contact) {

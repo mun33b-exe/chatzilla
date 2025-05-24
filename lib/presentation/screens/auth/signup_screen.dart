@@ -65,7 +65,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
-  // Email validation
+    
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter your email address';
@@ -77,7 +77,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
-  // Password validation
+    
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a password';
@@ -88,7 +88,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
-  // Phone validation
+    
   String? _validatePhone(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter your phone number';

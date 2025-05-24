@@ -152,7 +152,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                   BlocBuilder<ChatCubit, ChatState>(
                     bloc: _chatCubit,
                     builder: (context, state) {
-                      // Hide activity status if either user is blocked
+                        
                       if (state.amIBlocked || state.isUserBlocked) {
                         return const SizedBox.shrink();
                       }
@@ -270,7 +270,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
             Center(child: Text(state.error ?? "Something went wrong"));
           }
           return Container(
-            color: const Color(0xFFECF2F4), // Set chat background color here
+            color: const Color(0xFFECF2F4),   
             child: Column(
               children: [
                 if (state.amIBlocked)
@@ -441,12 +441,12 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
-  // final bool showTime;
+    
   const MessageBubble({
     super.key,
     required this.message,
     required this.isMe,
-    // required this.showTime,
+      
   });
 
   @override

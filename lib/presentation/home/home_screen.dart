@@ -31,6 +31,109 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
   }
 
+  
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Logout',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor,
+              fontSize: 20,
+            ),
+          ),
+          content: const Text(
+            'Are you sure you want to logout from ChatZilla?',
+            style: TextStyle(fontSize: 16),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();  
+              },
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();  
+
+                 
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext context) {
+                    return const Center(child: CircularProgressIndicator());
+                  },
+                );
+
+                try {
+                   
+                  await getIt<AuthCubit>().signOut();
+
+                   
+                  final navigator =
+                      getIt<AppRouter>().navigatorKey.currentState;
+                  if (navigator != null) {
+                     
+                    navigator.pop();
+
+                     
+                    navigator.pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                      (route) => false,
+                    );
+                  }
+                } catch (e) {
+                   
+                  final navigator =
+                      getIt<AppRouter>().navigatorKey.currentState;
+                  if (navigator != null) {
+                    navigator.pop();  
+
+                     
+                    ScaffoldMessenger.of(navigator.context).showSnackBar(
+                      SnackBar(
+                        content: Text('Logout failed: ${e.toString()}'),
+                        backgroundColor: Theme.of(context).primaryColor,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColorDark,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Logout',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showContactsList(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -95,11 +198,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Padding(
+        title: const Padding(
           padding: EdgeInsets.only(left: 16.0),
-          child: const Text("Chats"),
+          child: Text("Chats"),
         ),
-        // centerTitle: true,
         titleTextStyle: const TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.bold,
@@ -108,15 +210,11 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Theme.of(context).primaryColor,
         actions: [
           InkWell(
-            onTap: () async {
-              await getIt<AuthCubit>().signOut();
-              getIt<AppRouter>().pushAndRemoveUntil(const LoginScreen());
-            },
+            onTap: _showLogoutDialog,  
             child: const Padding(
               padding: EdgeInsets.only(right: 16.0),
               child: Icon(Icons.logout, size: 30, color: Colors.white),
             ),
-            // child: const Icon(Icons.logout),
           ),
         ],
       ),

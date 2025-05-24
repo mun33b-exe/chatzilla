@@ -46,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-  // Password validation
+    
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a password';
@@ -170,12 +170,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               recognizer:
                                   TapGestureRecognizer()
                                     ..onTap = () {
-                                      // Navigator.push(
-                                      //   context,
-                                      //   MaterialPageRoute(
-                                      //     builder: (context) => const SignupScreen(),
-                                      //   ),
-                                      // );
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
                                       getIt<AppRouter>().push(
                                         const SignupScreen(),
                                       );
