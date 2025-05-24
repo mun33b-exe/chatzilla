@@ -160,22 +160,6 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                           ],
                         );
                       }
-                      if (state.isReceiverOnline) {
-                        return const Text(
-                          "Online",
-                          style: TextStyle(fontSize: 14, color: Colors.green),
-                        );
-                      }
-                      if (state.receiverLastSeen != null) {
-                        final lastSeen = state.receiverLastSeen!.toDate();
-                        return Text(
-                          "last seen at ${DateFormat('h:mm a').format(lastSeen)}",
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        );
-                      }
                       return const SizedBox();
                     },
                   ),
