@@ -20,7 +20,6 @@ class RootScreen extends StatelessWidget {
             state.status == AuthStatus.error) {
           return const LoginScreen();
         } else {
-          // Show a loading indicator while checking auth state
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
