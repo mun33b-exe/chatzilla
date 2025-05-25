@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:chatzilla/data/repositories/auth_repository.dart';
+import 'package:chatzilla/data/repositories/chat_repository.dart';
 import 'package:chatzilla/data/services/service_locator.dart';
 import 'package:chatzilla/logic/cubit/auth/auth_state.dart';
 import 'package:chatzilla/router/app_router.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _authRepository;
+  final ChatRepository _chatRepository = getIt<ChatRepository>();
   StreamSubscription<User?>? _authStateSubscription;
 
   AuthCubit({required AuthRepository authRepository})
@@ -79,6 +81,12 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> signOut() async {
     try {
+      // Set user offline before signing out
+      final currentUserId = _authRepository.currentUser?.uid;
+      if (currentUserId != null) {
+        await _chatRepository.updateOnlineStatus(currentUserId, false);
+      }
+
       print(getIt<AuthRepository>().currentUser?.uid ?? "asasa");
       await _authRepository.singOut();
       print(getIt<AuthRepository>().currentUser?.uid ?? "asasa");
