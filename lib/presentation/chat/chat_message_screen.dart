@@ -484,43 +484,58 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Row(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.end, // Align to bottom
                             children: [
                               Expanded(
-                                child: TextField(
-                                  onTap: () {
-                                    if (_showEmoji) {
-                                      setState(() {
-                                        _showEmoji = false;
-                                      });
-                                    }
-                                  },
-                                  controller: messageController,
-                                  textCapitalization:
-                                      TextCapitalization.sentences,
-                                  keyboardType: TextInputType.multiline,
-                                  decoration: InputDecoration(
-                                    hintText: "Type a message",
-                                    filled: true,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 14,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    fillColor: Theme.of(context).cardColor,
-                                    suffixIcon: IconButton(
-                                      onPressed: () {
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    maxHeight:
+                                        120, // Maximum height (about 6 lines)
+                                  ),
+                                  child: TextField(
+                                    onTap: () {
+                                      if (_showEmoji) {
                                         setState(() {
-                                          _showEmoji = !_showEmoji;
-                                          if (_showEmoji) {
-                                            FocusScope.of(context).unfocus();
-                                          }
+                                          _showEmoji = false;
                                         });
-                                      },
-                                      icon: const Icon(Icons.emoji_emotions),
-                                      color: Theme.of(context).primaryColorDark,
+                                      }
+                                    },
+                                    controller: messageController,
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    keyboardType: TextInputType.multiline,
+                                    maxLines: null, // Allow unlimited lines
+                                    minLines: 1, // Start with 1 line
+                                    textInputAction:
+                                        TextInputAction
+                                            .newline, // Allow new lines
+                                    decoration: InputDecoration(
+                                      hintText: "Type a message",
+                                      filled: true,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 20,
+                                            vertical: 14,
+                                          ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      fillColor: Theme.of(context).cardColor,
+                                      suffixIcon: IconButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _showEmoji = !_showEmoji;
+                                            if (_showEmoji) {
+                                              FocusScope.of(context).unfocus();
+                                            }
+                                          });
+                                        },
+                                        icon: const Icon(Icons.emoji_emotions),
+                                        color:
+                                            Theme.of(context).primaryColorDark,
+                                      ),
                                     ),
                                   ),
                                 ),
