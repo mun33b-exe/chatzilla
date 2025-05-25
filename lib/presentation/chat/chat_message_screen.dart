@@ -178,6 +178,83 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
     super.dispose();
   }
 
+  // Add this helper method to group messages by date
+  List<Widget> _buildMessageWidgets(List<ChatMessage> messages) {
+    if (messages.isEmpty) return [];
+
+    List<Widget> widgets = [];
+    String? lastDateString;
+
+    // Reverse the messages since ListView is reversed
+    final reversedMessages = messages.reversed.toList();
+
+    for (int i = 0; i < reversedMessages.length; i++) {
+      final message = reversedMessages[i];
+      final messageDate = message.timestamp.toDate();
+      final dateString = _getDateString(messageDate);
+
+      // Add date separator if this is a new date
+      if (lastDateString != dateString) {
+        widgets.add(_buildDateSeparator(dateString, messageDate));
+        lastDateString = dateString;
+      }
+
+      final isMe = message.senderId == _chatCubit.currentUserId;
+      widgets.add(
+        AnimatedMessageBubble(
+          key: ValueKey(message.id),
+          message: message,
+          isMe: isMe,
+          animation: _animations[message.id],
+        ),
+      );
+    }
+
+    return widgets.reversed.toList(); // Reverse back for the reversed ListView
+  }
+
+  String _getDateString(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final messageDay = DateTime(date.year, date.month, date.day);
+
+    if (messageDay == today) {
+      return 'Today';
+    } else if (messageDay == yesterday) {
+      return 'Yesterday';
+    } else if (now.difference(messageDay).inDays < 7) {
+      return DateFormat(
+        'EEEE',
+      ).format(date); // Day name (Monday, Tuesday, etc.)
+    } else {
+      return DateFormat('MMM dd, yyyy').format(date); // Month Day, Year
+    }
+  }
+
+  Widget _buildDateSeparator(String dateString, DateTime date) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Theme.of(context).primaryColorDark,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            dateString,
+            style: TextStyle(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -367,8 +444,9 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
             return const Center(child: CircularProgressIndicator());
           }
           if (state.status == ChatStatus.error) {
-            Center(child: Text(state.error ?? "Something went wrong"));
+            return Center(child: Text(state.error ?? "Something went wrong"));
           }
+
           return Container(
             color: const Color(0xFFECF2F4),
             child: Column(
@@ -384,23 +462,11 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                     ),
                   ),
                 Expanded(
-                  child: ListView.builder(
+                  child: ListView(
                     controller: _scrollController,
                     reverse: true,
-                    physics:
-                        const BouncingScrollPhysics(), // Add bouncy physics
-                    itemCount: state.messages.length,
-                    itemBuilder: (context, index) {
-                      final message = state.messages[index];
-                      final isMe = message.senderId == _chatCubit.currentUserId;
-
-                      return AnimatedMessageBubble(
-                        key: ValueKey(message.id),
-                        message: message,
-                        isMe: isMe,
-                        animation: _animations[message.id],
-                      );
-                    },
+                    physics: const BouncingScrollPhysics(),
+                    children: _buildMessageWidgets(state.messages),
                   ),
                 ),
                 if (!state.amIBlocked && !state.isUserBlocked)
