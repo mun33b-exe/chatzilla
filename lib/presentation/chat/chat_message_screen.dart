@@ -65,7 +65,6 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
   }
 
   void _onScroll() {
-
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       _chatCubit.loadMoreMessages();
@@ -124,10 +123,14 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
             CircleAvatar(
               backgroundColor: Theme.of(context).primaryColorDark,
               foregroundImage: NetworkImage(
-                "https://ui-avatars.com/api/?name=${widget.receiverName}&background=${Theme.of(context).primaryColorDark.value.toRadixString(16).substring(2)}&color=fff",
+                "https://ui-avatars.com/api/?name=${Uri.encodeComponent(widget.receiverName)}&background=${Theme.of(context).primaryColorDark.value.toRadixString(16).substring(2)}&color=fff",
               ),
               child: Text(
-                widget.receiverName[0].toUpperCase(),
+                widget.receiverName.runes.isNotEmpty
+                    ? String.fromCharCode(
+                      widget.receiverName.runes.first,
+                    ).toUpperCase()
+                    : "?",
                 style: TextStyle(
                   color: Theme.of(context).scaffoldBackgroundColor,
                   fontSize: 20,
@@ -152,7 +155,6 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                   BlocBuilder<ChatCubit, ChatState>(
                     bloc: _chatCubit,
                     builder: (context, state) {
-                        
                       if (state.amIBlocked || state.isUserBlocked) {
                         return const SizedBox.shrink();
                       }
@@ -221,20 +223,49 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                       builder:
                           (context) => AlertDialog(
                             title: Text(
-                              "Are you sure you want to block ${widget.receiverName}",
+                              'Block User',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                                fontSize: 20,
+                              ),
+                            ),
+                            content: Text(
+                              "Are you sure you want to block ${widget.receiverName}?",
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () {
                                   Navigator.pop(context);
                                 },
-                                child: const Text("Cancel"),
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Theme.of(context).primaryColor,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ),
-                              TextButton(
+                              ElevatedButton(
                                 onPressed: () => Navigator.pop(context, true),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
                                 child: const Text(
-                                  "Block",
-                                  style: TextStyle(color: Colors.red),
+                                  'Block',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],
@@ -270,7 +301,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
             Center(child: Text(state.error ?? "Something went wrong"));
           }
           return Container(
-            color: const Color(0xFFECF2F4),   
+            color: const Color(0xFFECF2F4),
             child: Column(
               children: [
                 if (state.amIBlocked)
@@ -441,13 +472,8 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
-    
-  const MessageBubble({
-    super.key,
-    required this.message,
-    required this.isMe,
-      
-  });
+
+  const MessageBubble({super.key, required this.message, required this.isMe});
 
   @override
   Widget build(BuildContext context) {
