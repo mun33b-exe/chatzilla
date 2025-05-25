@@ -53,13 +53,15 @@ class ChatRepository extends BaseRepository {
     await _chatRooms.doc(roomId).set(newRoom.toMap());
     return newRoom;
   }
-
   Future<void> sendMessage({
     required String chatRoomId,
     required String senderId,
     required String receiverId,
     required String content,
     MessageType type = MessageType.text,
+    String? replyToMessageId,
+    String? replyToContent,
+    String? replyToSenderId,
   }) async {
       
     final batch = firestore.batch();
@@ -69,9 +71,7 @@ class ChatRepository extends BaseRepository {
     final messageRef = getChatRoomMessages(chatRoomId);
     final messageDoc = messageRef.doc();
 
-      
-
-    final message = ChatMessage(
+          final message = ChatMessage(
       id: messageDoc.id,
       chatRoomId: chatRoomId,
       senderId: senderId,
@@ -80,6 +80,9 @@ class ChatRepository extends BaseRepository {
       type: type,
       timestamp: Timestamp.now(),
       readBy: [senderId],
+      replyToMessageId: replyToMessageId,
+      replyToContent: replyToContent,
+      replyToSenderId: replyToSenderId,
     );
 
       

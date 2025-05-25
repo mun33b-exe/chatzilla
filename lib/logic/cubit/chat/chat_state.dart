@@ -22,6 +22,7 @@ class ChatState extends Equatable {
   final bool isLoadingMore;
   final bool isUserBlocked;
   final bool amIBlocked;
+  final ChatMessage? replyingToMessage;
 
   const ChatState({
     this.status = ChatStatus.inital,
@@ -36,8 +37,8 @@ class ChatState extends Equatable {
     this.isLoadingMore = false,
     this.isUserBlocked = false,
     this.amIBlocked = false,
+    this.replyingToMessage,
   });
-
   ChatState copyWith({
     ChatStatus? status,
     String? error,
@@ -51,6 +52,8 @@ class ChatState extends Equatable {
     bool? isLoadingMore,
     bool? isUserBlocked,
     bool? amIBlocked,
+    ChatMessage? replyingToMessage,
+    bool clearReply = false,
   }) {
     return ChatState(
       status: status ?? this.status,
@@ -65,9 +68,9 @@ class ChatState extends Equatable {
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       isUserBlocked: isUserBlocked ?? this.isUserBlocked,
       amIBlocked: amIBlocked ?? this.amIBlocked,
+      replyingToMessage: clearReply ? null : (replyingToMessage ?? this.replyingToMessage),
     );
   }
-
   @override
   List<Object?> get props {
     return [
@@ -83,6 +86,7 @@ class ChatState extends Equatable {
       isLoadingMore,
       isUserBlocked,
       amIBlocked,
+      replyingToMessage,
     ];
   }
 }

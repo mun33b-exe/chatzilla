@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:chatzilla/data/models/chat_message.dart';
 import 'package:chatzilla/data/repositories/chat_repository.dart';
 import 'package:chatzilla/logic/cubit/chat/chat_state.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -47,9 +48,11 @@ class ChatCubit extends Cubit<ChatState> {
           status: ChatStatus.error, error: "Failed to create chat room $e"));
     }
   }
-
-  Future<void> sendMessage(
-      {required String content, required String receiverId}) async {
+  Future<void> sendMessage({
+    required String content,
+    required String receiverId,
+    ChatMessage? replyToMessage,
+  }) async {
     if (state.chatRoomId == null) return;
 
     try {
@@ -58,11 +61,26 @@ class ChatCubit extends Cubit<ChatState> {
         senderId: currentUserId,
         receiverId: receiverId,
         content: content,
+        replyToMessageId: replyToMessage?.id,
+        replyToContent: replyToMessage?.content,
+        replyToSenderId: replyToMessage?.senderId,
       );
+      // Clear the reply after sending
+      if (state.replyingToMessage != null) {
+        emit(state.copyWith(clearReply: true));
+      }
     } catch (e) {
       log(e.toString());
       emit(state.copyWith(error: "Failed to send message"));
     }
+  }
+
+  void setReplyToMessage(ChatMessage? message) {
+    emit(state.copyWith(replyingToMessage: message));
+  }
+
+  void clearReply() {
+    emit(state.copyWith(clearReply: true));
   }
 
   Future<void> loadMoreMessages() async {

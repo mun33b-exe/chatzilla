@@ -5,12 +5,11 @@ import 'package:chatzilla/data/repositories/chat_repository.dart';
 import 'package:chatzilla/data/services/service_locator.dart';
 import 'package:chatzilla/logic/cubit/chat/chat_cubit.dart';
 import 'package:chatzilla/logic/cubit/chat/chat_state.dart';
-import 'package:chatzilla/presentation/widgets/loading_dots.dart';
+import 'package:chatzilla/presentation/widgets/reply_message_widget.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatMessageScreen extends StatefulWidget {
   final String receiverId;
@@ -57,7 +56,6 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
       print("Error setting user online: $e");
     }
   }
-
   Future<void> _handleSendMessage() async {
     final messageText = messageController.text.trim();
     if (messageText.isEmpty) return;
@@ -67,11 +65,19 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
       _isComposing = false;
     });
 
-    // Send message
+    // Get current reply state
+    final currentState = _chatCubit.state;
+    final replyToMessage = currentState.replyingToMessage;    // Send message
     await _chatCubit.sendMessage(
       content: messageText,
       receiverId: widget.receiverId,
+      replyToMessage: replyToMessage,
     );
+
+    // Clear reply after sending
+    if (replyToMessage != null) {
+      _chatCubit.clearReply();
+    }
 
     // Immediate scroll for sent messages
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -197,15 +203,15 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
       if (lastDateString != dateString) {
         widgets.add(_buildDateSeparator(dateString, messageDate));
         lastDateString = dateString;
-      }
-
-      final isMe = message.senderId == _chatCubit.currentUserId;
+      }      final isMe = message.senderId == _chatCubit.currentUserId;
       widgets.add(
         AnimatedMessageBubble(
           key: ValueKey(message.id),
           message: message,
           isMe: isMe,
+          currentUserId: _chatCubit.currentUserId,
           animation: _animations[message.id],
+          onReply: (replyMessage) => _chatCubit.setReplyToMessage(replyMessage),
         ),
       );
     }
@@ -308,11 +314,15 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                         return Row(
                           children: [
                             Container(
+                              foregroundDecoration: BoxDecoration(
+                                color:
+                                    Theme.of(context).scaffoldBackgroundColor,
+                              ),
                               margin: const EdgeInsets.only(right: 4),
-                              child: const LoadingDots(),
+                              // child: LoadingDots(),
                             ),
                             Text(
-                              "typing",
+                              "typing...",
                               style: TextStyle(
                                 color:
                                     Theme.of(context).scaffoldBackgroundColor,
@@ -479,10 +489,19 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                       bottom: 16,
                     ),
                     child: SafeArea(
-                      top: false,
-                      child: Column(
+                      top: false,                      child: Column(
                         mainAxisSize: MainAxisSize.min,
-                        children: [
+                        children: [                          // Reply preview
+                          if (state.replyingToMessage != null)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ReplyMessageWidget(
+                                replyToMessage: state.replyingToMessage,
+                                currentUserId: _chatCubit.currentUserId,
+                                isPreview: true,
+                                onCancel: () => _chatCubit.clearReply(),
+                              ),
+                            ),
                           Row(
                             crossAxisAlignment:
                                 CrossAxisAlignment.end, // Align to bottom
@@ -631,18 +650,25 @@ class AnimatedMessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
   final Animation<double>? animation;
+  final String currentUserId;
+  final Function(ChatMessage)? onReply;
 
   const AnimatedMessageBubble({
     super.key,
     required this.message,
     required this.isMe,
+    required this.currentUserId,
     this.animation,
-  });
-
-  @override
+    this.onReply,
+  });  @override
   Widget build(BuildContext context) {
     if (animation == null) {
-      return MessageBubble(message: message, isMe: isMe);
+      return MessageBubble(
+        message: message, 
+        isMe: isMe,
+        currentUserId: currentUserId,
+        onReply: onReply,
+      );
     }
 
     return AnimatedBuilder(
@@ -664,7 +690,12 @@ class AnimatedMessageBubble extends StatelessWidget {
             ),
             child: Opacity(
               opacity: animationValue,
-              child: MessageBubble(message: message, isMe: isMe),
+              child: MessageBubble(
+                message: message, 
+                isMe: isMe,
+                currentUserId: currentUserId,
+                onReply: onReply,
+              ),
             ),
           ),
         );
@@ -676,67 +707,118 @@ class AnimatedMessageBubble extends StatelessWidget {
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
+  final String currentUserId;
+  final Function(ChatMessage)? onReply;
 
-  const MessageBubble({super.key, required this.message, required this.isMe});
-
+  const MessageBubble({
+    super.key, 
+    required this.message, 
+    required this.isMe,
+    required this.currentUserId,
+    this.onReply,
+  });
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: EdgeInsets.only(
-          left: isMe ? 64 : 8,
-          right: isMe ? 8 : 64,
-          bottom: 4,
+    return GestureDetector(
+      onLongPress: () => onReply?.call(message),
+      child: Dismissible(
+        key: Key(message.id),
+        direction: isMe ? DismissDirection.endToStart : DismissDirection.startToEnd,
+        confirmDismiss: (direction) async {
+          onReply?.call(message);
+          return false; // Don't actually dismiss
+        },
+        background: Container(
+          color: Colors.transparent,
+          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+          padding: EdgeInsets.only(
+            left: isMe ? 0 : 20,
+            right: isMe ? 20 : 0,
+          ),
+          child: Icon(
+            Icons.reply,
+            color: Theme.of(context).primaryColor,
+            size: 24,
+          ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color:
-              isMe
-                  ? Theme.of(context).primaryColor
-                  : Theme.of(context).primaryColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Text(
-              message.content,
-              style: TextStyle(
-                color: isMe ? Colors.white : Colors.black,
-                fontSize: 16, // Added explicit font size
-              ),
+        child: Align(
+          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            margin: EdgeInsets.only(
+              left: isMe ? 64 : 8,
+              right: isMe ? 8 : 64,
+              bottom: 4,
             ),
-            const SizedBox(
-              height: 4,
-            ), // Added spacing between message and timestamp
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  DateFormat('h:mm a').format(message.timestamp.toDate()),
-                  style: TextStyle(
-                    color: isMe ? Colors.white70 : Colors.grey[600],
-                    fontSize: 12, // Smaller font size for timestamp
+            child: Column(
+              crossAxisAlignment:
+                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,              children: [
+                // Show reply if this message is a reply
+                if (message.replyToMessageId != null) ...[
+                  ReplyMessageWidget(
+                    replyToMessage: ChatMessage(
+                      id: message.replyToMessageId!,
+                      chatRoomId: message.chatRoomId,
+                      senderId: message.replyToSenderId!,
+                      receiverId: message.receiverId,
+                      content: message.replyToContent!,
+                      timestamp: message.timestamp,
+                      status: MessageStatus.sent,
+                      readBy: [],
+                    ),
+                    currentUserId: currentUserId,
+                    isPreview: false,
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isMe
+                        ? Theme.of(context).primaryColor
+                        : Theme.of(context).primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment:
+                        isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        message.content,
+                        style: TextStyle(
+                          color: isMe ? Colors.white : Colors.black,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            DateFormat('h:mm a').format(message.timestamp.toDate()),
+                            style: TextStyle(
+                              color: isMe ? Colors.white70 : Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (isMe) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.done_all,
+                              size: 14,
+                              color: message.status == MessageStatus.read
+                                  ? Theme.of(context).primaryColorDark
+                                  : Colors.white70,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                if (isMe) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.done_all,
-                    size: 14,
-                    color:
-                        message.status == MessageStatus.read
-                            ? Theme.of(context).primaryColorDark
-                            : Colors.white70,
-                  ),
-                ],
               ],
             ),
-          ],
+          ),
         ),
-      ),
-    );
+      ),    );
   }
 }

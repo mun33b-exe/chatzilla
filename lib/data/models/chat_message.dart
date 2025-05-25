@@ -14,6 +14,9 @@ class ChatMessage {
   final MessageStatus status;
   final Timestamp timestamp;
   final List<String> readBy;
+  final String? replyToMessageId;
+  final String? replyToContent;
+  final String? replyToSenderId;
 
   ChatMessage({
     required this.id,
@@ -25,8 +28,10 @@ class ChatMessage {
     this.status = MessageStatus.sent,
     required this.timestamp,
     required this.readBy,
+    this.replyToMessageId,
+    this.replyToContent,
+    this.replyToSenderId,
   });
-
   factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ChatMessage(
@@ -42,9 +47,11 @@ class ChatMessage {
           orElse: () => MessageStatus.sent),
       timestamp: data['timestamp'] as Timestamp,
       readBy: List<String>.from(data['readBy'] ?? []),
+      replyToMessageId: data['replyToMessageId'] as String?,
+      replyToContent: data['replyToContent'] as String?,
+      replyToSenderId: data['replyToSenderId'] as String?,
     );
   }
-
   Map<String, dynamic> toMap() {
     return {
       "chatRoomId": chatRoomId,
@@ -55,9 +62,11 @@ class ChatMessage {
       "status": status.toString(),
       "timestamp": timestamp,
       "readBy": readBy,
+      "replyToMessageId": replyToMessageId,
+      "replyToContent": replyToContent,
+      "replyToSenderId": replyToSenderId,
     };
   }
-
   ChatMessage copyWith({
     String? id,
     String? chatRoomId,
@@ -68,6 +77,9 @@ class ChatMessage {
     MessageStatus? status,
     Timestamp? timestamp,
     List<String>? readBy,
+    String? replyToMessageId,
+    String? replyToContent,
+    String? replyToSenderId,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -79,6 +91,9 @@ class ChatMessage {
       status: status ?? this.status,
       timestamp: timestamp ?? this.timestamp,
       readBy: readBy ?? this.readBy,
+      replyToMessageId: replyToMessageId ?? this.replyToMessageId,
+      replyToContent: replyToContent ?? this.replyToContent,
+      replyToSenderId: replyToSenderId ?? this.replyToSenderId,
     );
   }
 }
