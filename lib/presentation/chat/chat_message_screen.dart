@@ -25,13 +25,16 @@ class ChatMessageScreen extends StatefulWidget {
   State<ChatMessageScreen> createState() => _ChatMessageScreenState();
 }
 
-class _ChatMessageScreenState extends State<ChatMessageScreen> {
+class _ChatMessageScreenState extends State<ChatMessageScreen>
+    with TickerProviderStateMixin {
   final TextEditingController messageController = TextEditingController();
   late final ChatCubit _chatCubit;
   final _scrollController = ScrollController();
   List<ChatMessage> _previousMessages = [];
   bool _isComposing = false;
   bool _showEmoji = false;
+  final Map<String, AnimationController> _animationControllers = {};
+  final Map<String, Animation<double>> _animations = {};
 
   @override
   void initState() {
@@ -57,11 +60,23 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
 
   Future<void> _handleSendMessage() async {
     final messageText = messageController.text.trim();
+    if (messageText.isEmpty) return;
+
     messageController.clear();
+    setState(() {
+      _isComposing = false;
+    });
+
+    // Send message
     await _chatCubit.sendMessage(
       content: messageText,
       receiverId: widget.receiverId,
     );
+
+    // Immediate scroll for sent messages
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _scrollToBottom();
+    });
   }
 
   void _onScroll() {
@@ -87,21 +102,75 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
+        duration: const Duration(milliseconds: 400), // Smoother scroll duration
+        curve: Curves.easeOutCubic, // Smoother curve for scrolling
       );
     }
   }
 
   void _hasNewMessages(List<ChatMessage> messages) {
+    // Check for new messages and animate them
+    for (final message in messages) {
+      if (!_previousMessages.any((prev) => prev.id == message.id)) {
+        _animateNewMessage(message);
+        // Delay scroll to allow animation to start
+        Future.delayed(const Duration(milliseconds: 50), () {
+          _scrollToBottom();
+        });
+      }
+    }
+
     if (messages.length != _previousMessages.length) {
-      _scrollToBottom();
       _previousMessages = messages;
     }
   }
 
+  void _animateNewMessage(ChatMessage message) {
+    // Don't create animation if one already exists
+    if (_animationControllers.containsKey(message.id)) {
+      return;
+    }
+
+    final controller = AnimationController(
+      duration: const Duration(
+        milliseconds: 400,
+      ), // Slightly longer for smoother animation
+      vsync: this,
+    );
+
+    final animation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Curves.elasticOut, // More bouncy and smooth curve
+      ),
+    );
+
+    _animationControllers[message.id] = controller;
+    _animations[message.id] = animation;
+
+    // Add listener to clean up when animation completes
+    controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        // Clean up after animation completes
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted && _animationControllers.containsKey(message.id)) {
+            _animationControllers[message.id]?.dispose();
+            _animationControllers.remove(message.id);
+            _animations.remove(message.id);
+          }
+        });
+      }
+    });
+
+    controller.forward();
+  }
+
   @override
   void dispose() {
+    // Dispose all animation controllers
+    for (final controller in _animationControllers.values) {
+      controller.dispose();
+    }
     messageController.dispose();
     _scrollController.dispose();
     _chatCubit.leaveChat();
@@ -318,11 +387,19 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
                   child: ListView.builder(
                     controller: _scrollController,
                     reverse: true,
+                    physics:
+                        const BouncingScrollPhysics(), // Add bouncy physics
                     itemCount: state.messages.length,
                     itemBuilder: (context, index) {
                       final message = state.messages[index];
                       final isMe = message.senderId == _chatCubit.currentUserId;
-                      return MessageBubble(message: message, isMe: isMe);
+
+                      return AnimatedMessageBubble(
+                        key: ValueKey(message.id),
+                        message: message,
+                        isMe: isMe,
+                        animation: _animations[message.id],
+                      );
                     },
                   ),
                 ),
@@ -469,6 +546,52 @@ class _ChatMessageScreenState extends State<ChatMessageScreen> {
   }
 }
 
+class AnimatedMessageBubble extends StatelessWidget {
+  final ChatMessage message;
+  final bool isMe;
+  final Animation<double>? animation;
+
+  const AnimatedMessageBubble({
+    super.key,
+    required this.message,
+    required this.isMe,
+    this.animation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (animation == null) {
+      return MessageBubble(message: message, isMe: isMe);
+    }
+
+    return AnimatedBuilder(
+      animation: animation!,
+      builder: (context, child) {
+        final animationValue = animation!.value.clamp(0.0, 1.0);
+
+        return Transform.scale(
+          scale:
+              0.7 +
+              (animationValue * 0.3), // Start from 70% size, scale to 100%
+          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+          child: Transform.translate(
+            offset: Offset(
+              isMe
+                  ? (1 - animationValue) * 30
+                  : (1 - animationValue) * -30, // Reduced slide distance
+              (1 - animationValue) * 20, // Add slight vertical slide
+            ),
+            child: Opacity(
+              opacity: animationValue,
+              child: MessageBubble(message: message, isMe: isMe),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
@@ -499,14 +622,23 @@ class MessageBubble extends StatelessWidget {
           children: [
             Text(
               message.content,
-              style: TextStyle(color: isMe ? Colors.white : Colors.black),
+              style: TextStyle(
+                color: isMe ? Colors.white : Colors.black,
+                fontSize: 16, // Added explicit font size
+              ),
             ),
+            const SizedBox(
+              height: 4,
+            ), // Added spacing between message and timestamp
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   DateFormat('h:mm a').format(message.timestamp.toDate()),
-                  style: TextStyle(color: isMe ? Colors.white : Colors.black),
+                  style: TextStyle(
+                    color: isMe ? Colors.white70 : Colors.grey[600],
+                    fontSize: 12, // Smaller font size for timestamp
+                  ),
                 ),
                 if (isMe) ...[
                   const SizedBox(width: 4),
