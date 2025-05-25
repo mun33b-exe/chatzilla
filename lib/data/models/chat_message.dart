@@ -17,6 +17,7 @@ class ChatMessage {
   final String? replyToMessageId;
   final String? replyToContent;
   final String? replyToSenderId;
+  final String? replyToSenderName;
 
   ChatMessage({
     required this.id,
@@ -31,6 +32,7 @@ class ChatMessage {
     this.replyToMessageId,
     this.replyToContent,
     this.replyToSenderId,
+    this.replyToSenderName,
   });
   factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -40,16 +42,20 @@ class ChatMessage {
       senderId: data['senderId'] as String,
       receiverId: data['receiverId'] as String,
       content: data['content'] as String,
-      type: MessageType.values.firstWhere((e) => e.toString() == data['type'],
-          orElse: () => MessageType.text),
+      type: MessageType.values.firstWhere(
+        (e) => e.toString() == data['type'],
+        orElse: () => MessageType.text,
+      ),
       status: MessageStatus.values.firstWhere(
-          (e) => e.toString() == data['status'],
-          orElse: () => MessageStatus.sent),
+        (e) => e.toString() == data['status'],
+        orElse: () => MessageStatus.sent,
+      ),
       timestamp: data['timestamp'] as Timestamp,
       readBy: List<String>.from(data['readBy'] ?? []),
       replyToMessageId: data['replyToMessageId'] as String?,
       replyToContent: data['replyToContent'] as String?,
       replyToSenderId: data['replyToSenderId'] as String?,
+      replyToSenderName: data['replyToSenderName'] as String?,
     );
   }
   Map<String, dynamic> toMap() {
@@ -65,8 +71,10 @@ class ChatMessage {
       "replyToMessageId": replyToMessageId,
       "replyToContent": replyToContent,
       "replyToSenderId": replyToSenderId,
+      "replyToSenderName": replyToSenderName,
     };
   }
+
   ChatMessage copyWith({
     String? id,
     String? chatRoomId,
@@ -80,6 +88,7 @@ class ChatMessage {
     String? replyToMessageId,
     String? replyToContent,
     String? replyToSenderId,
+    String? replyToSenderName,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -94,6 +103,7 @@ class ChatMessage {
       replyToMessageId: replyToMessageId ?? this.replyToMessageId,
       replyToContent: replyToContent ?? this.replyToContent,
       replyToSenderId: replyToSenderId ?? this.replyToSenderId,
+      replyToSenderName: replyToSenderName ?? this.replyToSenderName,
     );
   }
 }

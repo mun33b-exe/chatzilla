@@ -15,7 +15,6 @@ class ChatRepository extends BaseRepository {
     String currentUserId,
     String otherUserId,
   ) async {
-      
     if (currentUserId == otherUserId) {
       throw Exception("Cannot create a chat room with yourself");
     }
@@ -53,6 +52,7 @@ class ChatRepository extends BaseRepository {
     await _chatRooms.doc(roomId).set(newRoom.toMap());
     return newRoom;
   }
+
   Future<void> sendMessage({
     required String chatRoomId,
     required String senderId,
@@ -62,16 +62,14 @@ class ChatRepository extends BaseRepository {
     String? replyToMessageId,
     String? replyToContent,
     String? replyToSenderId,
+    String? replyToSenderName,
   }) async {
-      
     final batch = firestore.batch();
-
-      
 
     final messageRef = getChatRoomMessages(chatRoomId);
     final messageDoc = messageRef.doc();
 
-          final message = ChatMessage(
+    final message = ChatMessage(
       id: messageDoc.id,
       chatRoomId: chatRoomId,
       senderId: senderId,
@@ -83,12 +81,10 @@ class ChatRepository extends BaseRepository {
       replyToMessageId: replyToMessageId,
       replyToContent: replyToContent,
       replyToSenderId: replyToSenderId,
+      replyToSenderName: replyToSenderName,
     );
 
-      
     batch.set(messageDoc, message.toMap());
-
-      
 
     batch.update(_chatRooms.doc(chatRoomId), {
       "lastMessage": content,
@@ -98,7 +94,6 @@ class ChatRepository extends BaseRepository {
     await batch.commit();
   }
 
-    
   Stream<List<ChatMessage>> getMessages(
     String chatRoomId, {
     DocumentSnapshot? lastDocument,
@@ -153,8 +148,6 @@ class ChatRepository extends BaseRepository {
   Future<void> markMessagesAsRead(String chatRoomId, String userId) async {
     try {
       final batch = firestore.batch();
-
-        
 
       final unreadMessages =
           await getChatRoomMessages(chatRoomId)

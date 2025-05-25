@@ -2,12 +2,7 @@ import 'package:chatzilla/data/models/chat_message.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
-enum ChatStatus {
-  inital,
-  loading,
-  loaded,
-  error,
-}
+enum ChatStatus { inital, loading, loaded, error }
 
 class ChatState extends Equatable {
   final ChatStatus status;
@@ -68,9 +63,11 @@ class ChatState extends Equatable {
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       isUserBlocked: isUserBlocked ?? this.isUserBlocked,
       amIBlocked: amIBlocked ?? this.amIBlocked,
-      replyingToMessage: clearReply ? null : (replyingToMessage ?? this.replyingToMessage),
+      replyingToMessage:
+          clearReply ? null : (replyingToMessage ?? this.replyingToMessage),
     );
   }
+
   @override
   List<Object?> get props {
     return [

@@ -56,6 +56,7 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
       print("Error setting user online: $e");
     }
   }
+
   Future<void> _handleSendMessage() async {
     final messageText = messageController.text.trim();
     if (messageText.isEmpty) return;
@@ -63,15 +64,28 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
     messageController.clear();
     setState(() {
       _isComposing = false;
-    });
-
-    // Get current reply state
+    }); // Get current reply state
     final currentState = _chatCubit.state;
-    final replyToMessage = currentState.replyingToMessage;    // Send message
+    final replyToMessage = currentState.replyingToMessage;
+
+    // Determine the sender name for the reply
+    String? replyToSenderName;
+    if (replyToMessage != null) {
+      if (replyToMessage.senderId == _chatCubit.currentUserId) {
+        replyToSenderName = "You";
+      } else if (replyToMessage.senderId == widget.receiverId) {
+        replyToSenderName = widget.receiverName;
+      } else {
+        replyToSenderName = "Unknown User";
+      }
+    }
+
+    // Send message
     await _chatCubit.sendMessage(
       content: messageText,
       receiverId: widget.receiverId,
       replyToMessage: replyToMessage,
+      replyToSenderName: replyToSenderName,
     );
 
     // Clear reply after sending
@@ -203,7 +217,8 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
       if (lastDateString != dateString) {
         widgets.add(_buildDateSeparator(dateString, messageDate));
         lastDateString = dateString;
-      }      final isMe = message.senderId == _chatCubit.currentUserId;
+      }
+      final isMe = message.senderId == _chatCubit.currentUserId;
       widgets.add(
         AnimatedMessageBubble(
           key: ValueKey(message.id),
@@ -489,9 +504,11 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                       bottom: 16,
                     ),
                     child: SafeArea(
-                      top: false,                      child: Column(
+                      top: false,
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
-                        children: [                          // Reply preview
+                        children: [
+                          // Reply preview
                           if (state.replyingToMessage != null)
                             Container(
                               margin: const EdgeInsets.only(bottom: 8),
@@ -500,6 +517,14 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                                 currentUserId: _chatCubit.currentUserId,
                                 isPreview: true,
                                 onCancel: () => _chatCubit.clearReply(),
+                                senderName:
+                                    state.replyingToMessage?.senderId ==
+                                            _chatCubit.currentUserId
+                                        ? "You"
+                                        : state.replyingToMessage?.senderId ==
+                                            widget.receiverId
+                                        ? widget.receiverName
+                                        : "Unknown User",
                               ),
                             ),
                           Row(
@@ -660,11 +685,12 @@ class AnimatedMessageBubble extends StatelessWidget {
     required this.currentUserId,
     this.animation,
     this.onReply,
-  });  @override
+  });
+  @override
   Widget build(BuildContext context) {
     if (animation == null) {
       return MessageBubble(
-        message: message, 
+        message: message,
         isMe: isMe,
         currentUserId: currentUserId,
         onReply: onReply,
@@ -691,7 +717,7 @@ class AnimatedMessageBubble extends StatelessWidget {
             child: Opacity(
               opacity: animationValue,
               child: MessageBubble(
-                message: message, 
+                message: message,
                 isMe: isMe,
                 currentUserId: currentUserId,
                 onReply: onReply,
@@ -711,8 +737,8 @@ class MessageBubble extends StatelessWidget {
   final Function(ChatMessage)? onReply;
 
   const MessageBubble({
-    super.key, 
-    required this.message, 
+    super.key,
+    required this.message,
     required this.isMe,
     required this.currentUserId,
     this.onReply,
@@ -723,7 +749,8 @@ class MessageBubble extends StatelessWidget {
       onLongPress: () => onReply?.call(message),
       child: Dismissible(
         key: Key(message.id),
-        direction: isMe ? DismissDirection.endToStart : DismissDirection.startToEnd,
+        direction:
+            isMe ? DismissDirection.endToStart : DismissDirection.startToEnd,
         confirmDismiss: (direction) async {
           onReply?.call(message);
           return false; // Don't actually dismiss
@@ -731,10 +758,7 @@ class MessageBubble extends StatelessWidget {
         background: Container(
           color: Colors.transparent,
           alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-          padding: EdgeInsets.only(
-            left: isMe ? 0 : 20,
-            right: isMe ? 20 : 0,
-          ),
+          padding: EdgeInsets.only(left: isMe ? 0 : 20, right: isMe ? 20 : 0),
           child: Icon(
             Icons.reply,
             color: Theme.of(context).primaryColor,
@@ -751,7 +775,8 @@ class MessageBubble extends StatelessWidget {
             ),
             child: Column(
               crossAxisAlignment:
-                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,              children: [
+                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
                 // Show reply if this message is a reply
                 if (message.replyToMessageId != null) ...[
                   ReplyMessageWidget(
@@ -764,23 +789,31 @@ class MessageBubble extends StatelessWidget {
                       timestamp: message.timestamp,
                       status: MessageStatus.sent,
                       readBy: [],
+                      replyToSenderName: message.replyToSenderName,
                     ),
                     currentUserId: currentUserId,
                     isPreview: false,
+                    senderName: message.replyToSenderName,
                   ),
                   const SizedBox(height: 4),
                 ],
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: isMe
-                        ? Theme.of(context).primaryColor
-                        : Theme.of(context).primaryColor.withOpacity(0.1),
+                    color:
+                        isMe
+                            ? Theme.of(context).primaryColor
+                            : Theme.of(context).primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
                     crossAxisAlignment:
-                        isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                        isMe
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.start,
                     children: [
                       Text(
                         message.content,
@@ -794,7 +827,9 @@ class MessageBubble extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            DateFormat('h:mm a').format(message.timestamp.toDate()),
+                            DateFormat(
+                              'h:mm a',
+                            ).format(message.timestamp.toDate()),
                             style: TextStyle(
                               color: isMe ? Colors.white70 : Colors.grey[600],
                               fontSize: 12,
@@ -805,9 +840,10 @@ class MessageBubble extends StatelessWidget {
                             Icon(
                               Icons.done_all,
                               size: 14,
-                              color: message.status == MessageStatus.read
-                                  ? Theme.of(context).primaryColorDark
-                                  : Colors.white70,
+                              color:
+                                  message.status == MessageStatus.read
+                                      ? Theme.of(context).primaryColorDark
+                                      : Colors.white70,
                             ),
                           ],
                         ],
@@ -819,6 +855,7 @@ class MessageBubble extends StatelessWidget {
             ),
           ),
         ),
-      ),    );
+      ),
+    );
   }
 }

@@ -21,20 +21,24 @@ class ChatCubit extends Cubit<ChatState> {
   ChatCubit({
     required ChatRepository chatRepository,
     required this.currentUserId,
-  })  : _chatRepository = chatRepository,
-        super(const ChatState());
+  }) : _chatRepository = chatRepository,
+       super(const ChatState());
 
   void enterChat(String receiverId) async {
     _isInChat = true;
     emit(state.copyWith(status: ChatStatus.loading));
     try {
-      final chatRoom =
-          await _chatRepository.getOrCreateChatRoom(currentUserId, receiverId);
-      emit(state.copyWith(
-        chatRoomId: chatRoom.id,
-        receiverId: receiverId,
-        status: ChatStatus.loaded,
-      ));
+      final chatRoom = await _chatRepository.getOrCreateChatRoom(
+        currentUserId,
+        receiverId,
+      );
+      emit(
+        state.copyWith(
+          chatRoomId: chatRoom.id,
+          receiverId: receiverId,
+          status: ChatStatus.loaded,
+        ),
+      );
 
       //subscribe to all updates
       _subscribeToMessages(chatRoom.id);
@@ -44,14 +48,20 @@ class ChatCubit extends Cubit<ChatState> {
 
       await _chatRepository.updateOnlineStatus(currentUserId, true);
     } catch (e) {
-      emit(state.copyWith(
-          status: ChatStatus.error, error: "Failed to create chat room $e"));
+      emit(
+        state.copyWith(
+          status: ChatStatus.error,
+          error: "Failed to create chat room $e",
+        ),
+      );
     }
   }
+
   Future<void> sendMessage({
     required String content,
     required String receiverId,
     ChatMessage? replyToMessage,
+    String? replyToSenderName,
   }) async {
     if (state.chatRoomId == null) return;
 
@@ -64,6 +74,7 @@ class ChatCubit extends Cubit<ChatState> {
         replyToMessageId: replyToMessage?.id,
         replyToContent: replyToMessage?.content,
         replyToSenderId: replyToMessage?.senderId,
+        replyToSenderName: replyToSenderName,
       );
       // Clear the reply after sending
       if (state.replyingToMessage != null) {
@@ -87,19 +98,23 @@ class ChatCubit extends Cubit<ChatState> {
     if (state.status != ChatStatus.loaded ||
         state.messages.isEmpty ||
         !state.hasMoreMessages ||
-        state.isLoadingMore) return;
+        state.isLoadingMore)
+      return;
 
     try {
       emit(state.copyWith(isLoadingMore: true));
 
       final lastMessage = state.messages.last;
-      final lastDoc = await _chatRepository
-          .getChatRoomMessages(state.chatRoomId!)
-          .doc(lastMessage.id)
-          .get();
+      final lastDoc =
+          await _chatRepository
+              .getChatRoomMessages(state.chatRoomId!)
+              .doc(lastMessage.id)
+              .get();
 
-      final moreMessages = await _chatRepository
-          .getMoreMessages(state.chatRoomId!, lastDocument: lastDoc);
+      final moreMessages = await _chatRepository.getMoreMessages(
+        state.chatRoomId!,
+        lastDocument: lastDoc,
+      );
 
       if (moreMessages.isEmpty) {
         emit(state.copyWith(hasMoreMessages: false, isLoadingMore: false));
@@ -108,89 +123,105 @@ class ChatCubit extends Cubit<ChatState> {
 
       emit(
         state.copyWith(
-            messages: [...state.messages, ...moreMessages],
-            hasMoreMessages: moreMessages.length >= 20,
-            isLoadingMore: false),
+          messages: [...state.messages, ...moreMessages],
+          hasMoreMessages: moreMessages.length >= 20,
+          isLoadingMore: false,
+        ),
       );
     } catch (e) {
-      emit(state.copyWith(
-          error: "Failed to laod more messages", isLoadingMore: false));
+      emit(
+        state.copyWith(
+          error: "Failed to laod more messages",
+          isLoadingMore: false,
+        ),
+      );
     }
   }
 
   void _subscribeToMessages(String chatRoomId) {
     _messageSubscription?.cancel();
-    _messageSubscription =
-        _chatRepository.getMessages(chatRoomId).listen((messages) {
-      if (_isInChat) {
-        _markMessagesAsRead(chatRoomId);
-      }
-      emit(
-        state.copyWith(
-          messages: messages,
-          error: null,
-        ),
-      );
-    }, onError: (error) {
-      emit(
-        state.copyWith(
-            error: "Failed to load messages", status: ChatStatus.error),
-      );
-    });
+    _messageSubscription = _chatRepository
+        .getMessages(chatRoomId)
+        .listen(
+          (messages) {
+            if (_isInChat) {
+              _markMessagesAsRead(chatRoomId);
+            }
+            emit(state.copyWith(messages: messages, error: null));
+          },
+          onError: (error) {
+            emit(
+              state.copyWith(
+                error: "Failed to load messages",
+                status: ChatStatus.error,
+              ),
+            );
+          },
+        );
   }
 
   void _subscribeToOnlineStatus(String userId) {
     _onlineStatusSubscription?.cancel();
-    _onlineStatusSubscription =
-        _chatRepository.getUserOnlineStatus(userId).listen((status) {
-      final isOnline = status["isOnline"] as bool;
-      final lastSeen = status["lastSeen"] as Timestamp?;
+    _onlineStatusSubscription = _chatRepository
+        .getUserOnlineStatus(userId)
+        .listen(
+          (status) {
+            final isOnline = status["isOnline"] as bool;
+            final lastSeen = status["lastSeen"] as Timestamp?;
 
-      emit(state.copyWith(
-        isReceiverOnline: isOnline,
-        receiverLastSeen: lastSeen,
-      ));
-    }, onError: (error) {
-      print("error getting online status");
-    });
+            emit(
+              state.copyWith(
+                isReceiverOnline: isOnline,
+                receiverLastSeen: lastSeen,
+              ),
+            );
+          },
+          onError: (error) {
+            print("error getting online status");
+          },
+        );
   }
 
   void _subscribeToTypingStatus(String chatRoomId) {
     _typingSubscription?.cancel();
-    _typingSubscription =
-        _chatRepository.getTypingStatus(chatRoomId).listen((status) {
-      final isTyping = status["isTyping"] as bool;
-      final typingUserId = status["typingUserId"] as String?;
+    _typingSubscription = _chatRepository
+        .getTypingStatus(chatRoomId)
+        .listen(
+          (status) {
+            final isTyping = status["isTyping"] as bool;
+            final typingUserId = status["typingUserId"] as String?;
 
-      emit(
-        state.copyWith(
-            isReceiverTyping: isTyping && typingUserId != currentUserId),
-      );
-    }, onError: (error) {
-      print("error getting online status");
-    });
+            emit(
+              state.copyWith(
+                isReceiverTyping: isTyping && typingUserId != currentUserId,
+              ),
+            );
+          },
+          onError: (error) {
+            print("error getting online status");
+          },
+        );
   }
 
   void _subscribeToBlockStatus(String otherUserId) {
     _blockStatusSubscription?.cancel();
     _blockStatusSubscription = _chatRepository
         .isUserBlocked(currentUserId, otherUserId)
-        .listen((isBlocked) {
-      emit(
-        state.copyWith(isUserBlocked: isBlocked),
-      );
+        .listen(
+          (isBlocked) {
+            emit(state.copyWith(isUserBlocked: isBlocked));
 
-      _amIBlockStatusSubscription?.cancel();
-      _blockStatusSubscription = _chatRepository
-          .amIBlocked(currentUserId, otherUserId)
-          .listen((isBlocked) {
-        emit(
-          state.copyWith(amIBlocked: isBlocked),
+            _amIBlockStatusSubscription?.cancel();
+            _blockStatusSubscription = _chatRepository
+                .amIBlocked(currentUserId, otherUserId)
+                .listen((isBlocked) {
+                  emit(state.copyWith(amIBlocked: isBlocked));
+                });
+          },
+          onError: (error) {
+            print("error getting online status");
+          },
         );
-      });
-    }, onError: (error) {
-      print("error getting online status");
-    });
   }
 
   void startTyping() {
@@ -207,7 +238,10 @@ class ChatCubit extends Cubit<ChatState> {
 
     try {
       await _chatRepository.updateTypingStatus(
-          state.chatRoomId!, currentUserId, isTyping);
+        state.chatRoomId!,
+        currentUserId,
+        isTyping,
+      );
     } catch (e) {
       print("error updating typing status $e");
     }
@@ -217,9 +251,7 @@ class ChatCubit extends Cubit<ChatState> {
     try {
       await _chatRepository.blockUser(currentUserId, userId);
     } catch (e) {
-      emit(
-        state.copyWith(error: 'failed to block user $e'),
-      );
+      emit(state.copyWith(error: 'failed to block user $e'));
     }
   }
 
@@ -227,9 +259,7 @@ class ChatCubit extends Cubit<ChatState> {
     try {
       await _chatRepository.unBlockUser(currentUserId, userId);
     } catch (e) {
-      emit(
-        state.copyWith(error: 'failed to unblock user $e'),
-      );
+      emit(state.copyWith(error: 'failed to unblock user $e'));
     }
   }
 
