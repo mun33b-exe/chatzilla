@@ -46,7 +46,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-    
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a password';
@@ -116,6 +115,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       focusNode: _emailFocus,
                       validator: _validateEmail,
                       prefixIcon: const Icon(Icons.email_outlined),
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
                     ),
                     const SizedBox(height: 16),
                     CustomTextField(
@@ -125,6 +127,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       hintText: "Password",
                       prefixIcon: const Icon(Icons.lock_outline),
                       obscureText: !_isPasswordVisible,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => handleSignIn(),
                       suffixIcon: IconButton(
                         onPressed: () {
                           setState(() {
@@ -170,12 +174,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               recognizer:
                                   TapGestureRecognizer()
                                     ..onTap = () {
-                                        
-                                        
-                                        
-                                        
-                                        
-                                        
                                       getIt<AppRouter>().push(
                                         const SignupScreen(),
                                       );

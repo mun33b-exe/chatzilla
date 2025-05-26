@@ -1,8 +1,12 @@
 import 'package:chatzilla/data/models/chat_message.dart';
 import 'package:chatzilla/data/models/chat_room_model.dart';
+import 'package:chatzilla/data/models/group_model.dart';
 import 'package:chatzilla/data/models/user_model.dart';
 import 'package:chatzilla/data/services/base_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
+
+import 'group_repository.dart';
 
 class ChatRepository extends BaseRepository {
   CollectionReference get _chatRooms => firestore.collection("chatRooms");
@@ -94,6 +98,104 @@ class ChatRepository extends BaseRepository {
     await batch.commit();
   }
 
+  // Send group message
+  Future<void> sendGroupMessage({
+    required String groupId,
+    required String senderId,
+    required String content,
+    required String senderName,
+    MessageType type = MessageType.text,
+    String? replyToMessageId,
+    String? replyToContent,
+    String? replyToSenderId,
+    String? replyToSenderName,
+  }) async {
+    try {
+      final messageRef =
+          firestore
+              .collection('chatRooms')
+              .doc(groupId)
+              .collection('messages')
+              .doc();
+
+      final message = ChatMessage(
+        id: messageRef.id,
+        chatRoomId: groupId,
+        senderId: senderId,
+        receiverId: null, // No specific receiver for group messages
+        content: content,
+        type: type,
+        status: MessageStatus.sent,
+        timestamp: Timestamp.now(),
+        readBy: [senderId], // Sender has read it by default
+        replyToMessageId: replyToMessageId,
+        replyToContent: replyToContent,
+        replyToSenderId: replyToSenderId,
+        replyToSenderName: replyToSenderName,
+        chatType: ChatType.group,
+        senderName: senderName,
+      );
+
+      await messageRef.set(message.toMap());
+
+      // Update group's last message info
+      final groupRepository = GroupRepository();
+      await groupRepository.updateLastMessage(
+        groupId: groupId,
+        lastMessage: content,
+        senderId: senderId,
+      );
+
+      // Update chat room's last message
+      await _chatRooms.doc(groupId).update({
+        'lastMessage': content,
+        'lastMessageTime': Timestamp.now(),
+        'lastMessageSenderId': senderId,
+      });
+    } catch (e) {
+      throw Exception('Failed to send group message: $e');
+    }
+  }
+
+  // Get group messages (similar to getMessages but for groups)
+  Stream<List<ChatMessage>> getGroupMessages(
+    String groupId, {
+    DocumentSnapshot? lastDocument,
+  }) {
+    Query query = firestore
+        .collection('chatRooms')
+        .doc(groupId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .limit(20);
+
+    if (lastDocument != null) {
+      query = query.startAfterDocument(lastDocument);
+    }
+
+    return query.snapshots().map(
+      (snapshot) =>
+          snapshot.docs.map((doc) => ChatMessage.fromFirestore(doc)).toList(),
+    );
+  }
+
+  // Get more group messages for pagination
+  Future<List<ChatMessage>> getMoreGroupMessages(
+    String groupId, {
+    required DocumentSnapshot lastDocument,
+  }) async {
+    final query = firestore
+        .collection('chatRooms')
+        .doc(groupId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .startAfterDocument(lastDocument)
+        .limit(20);
+
+    final snapshot = await query.get();
+    return snapshot.docs.map((doc) => ChatMessage.fromFirestore(doc)).toList();
+  }
+
   Stream<List<ChatMessage>> getMessages(
     String chatRoomId, {
     DocumentSnapshot? lastDocument,
@@ -145,6 +247,18 @@ class ChatRepository extends BaseRepository {
         .map((snapshot) => snapshot.docs.length);
   }
 
+  // Add this method around line 240
+  Stream<int> getGroupUnreadCount(String groupId, String userId) {
+    return firestore
+        .collection('chatRooms')
+        .doc(groupId)
+        .collection('messages')
+        .where('senderId', isNotEqualTo: userId)
+        .where('readBy', whereNotIn: [userId])
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
   Future<void> markMessagesAsRead(String chatRoomId, String userId) async {
     try {
       final batch = firestore.batch();
@@ -167,6 +281,33 @@ class ChatRepository extends BaseRepository {
         print("Marked messaegs as read for user $userId");
       }
     } catch (e) {}
+  }
+
+  // Mark group messages as read
+  Future<void> markGroupMessagesAsRead(String groupId, String userId) async {
+    try {
+      final messagesQuery = firestore
+          .collection('chatRooms')
+          .doc(groupId)
+          .collection('messages')
+          .where('readBy', whereNotIn: [userId])
+          .limit(50); // Limit to avoid large operations
+
+      final snapshot = await messagesQuery.get();
+
+      final batch = firestore.batch();
+
+      for (final doc in snapshot.docs) {
+        final messageRef = doc.reference;
+        batch.update(messageRef, {
+          'readBy': FieldValue.arrayUnion([userId]),
+        });
+      }
+
+      await batch.commit();
+    } catch (e) {
+      print('Error marking group messages as read: $e');
+    }
   }
 
   Stream<Map<String, dynamic>> getUserOnlineStatus(String userId) {
@@ -208,6 +349,30 @@ class ChatRepository extends BaseRepository {
     }
   }
 
+  // Update typing status for groups
+  Future<void> updateGroupTypingStatus(
+    String groupId,
+    String userId,
+    String userName,
+    bool isTyping,
+  ) async {
+    try {
+      final doc = await _chatRooms.doc(groupId).get();
+      if (!doc.exists) {
+        print("Group chat room does not exist");
+        return;
+      }
+
+      await _chatRooms.doc(groupId).update({
+        'isTyping': isTyping,
+        'typingUserId': isTyping ? userId : null,
+        'typingUserName': isTyping ? userName : null,
+      });
+    } catch (e) {
+      print("error updating group typing status: $e");
+    }
+  }
+
   Stream<Map<String, dynamic>> getTypingStatus(String chatRoomId) {
     return _chatRooms.doc(chatRoomId).snapshots().map((snapshot) {
       if (!snapshot.exists) {
@@ -217,6 +382,25 @@ class ChatRepository extends BaseRepository {
       return {
         "isTyping": data['isTyping'] ?? false,
         "typingUserId": data['typingUserId'],
+      };
+    });
+  }
+
+  // Get group typing status
+  Stream<Map<String, dynamic>> getGroupTypingStatus(String groupId) {
+    return _chatRooms.doc(groupId).snapshots().map((snapshot) {
+      if (!snapshot.exists) {
+        return {
+          'isTyping': false,
+          'typingUserId': null,
+          'typingUserName': null,
+        };
+      }
+      final data = snapshot.data() as Map<String, dynamic>;
+      return {
+        "isTyping": data['isTyping'] ?? false,
+        "typingUserId": data['typingUserId'],
+        "typingUserName": data['typingUserName'],
       };
     });
   }
@@ -250,6 +434,63 @@ class ChatRepository extends BaseRepository {
     ) {
       final userData = UserModel.fromFirestore(doc);
       return userData.blockedUsers.contains(currentUserId);
+    });
+  }
+
+  // Get combined chat rooms (individual + groups)
+  Stream<List<dynamic>> getAllChatRooms(String userId) {
+    // Get individual chats
+    final individualChatsStream = _chatRooms
+        .where("participants", arrayContains: userId)
+        .where("isGroup", isEqualTo: false)
+        .orderBy('lastMessageTime', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs
+                  .map((doc) => ChatRoomModel.fromFirestore(doc))
+                  .toList(),
+        );
+
+    // Get group chats
+    final groupChatsStream = GroupRepository().getUserGroups(userId);
+
+    // Combine both streams
+    return Rx.combineLatest2(individualChatsStream, groupChatsStream, (
+      List<ChatRoomModel> individualChats,
+      List<GroupModel> groupChats,
+    ) {
+      // Convert to a common format and sort by last message time
+      List<dynamic> allChats = [];
+
+      allChats.addAll(individualChats);
+      allChats.addAll(groupChats);
+
+      // Sort by last message time
+      allChats.sort((a, b) {
+        Timestamp? timeA;
+        Timestamp? timeB;
+
+        if (a is ChatRoomModel) {
+          timeA = a.lastMessageTime;
+        } else if (a is GroupModel) {
+          timeA = a.lastMessageTime;
+        }
+
+        if (b is ChatRoomModel) {
+          timeB = b.lastMessageTime;
+        } else if (b is GroupModel) {
+          timeB = b.lastMessageTime;
+        }
+
+        if (timeA == null && timeB == null) return 0;
+        if (timeA == null) return 1;
+        if (timeB == null) return -1;
+
+        return timeB.compareTo(timeA);
+      });
+
+      return allChats;
     });
   }
 }

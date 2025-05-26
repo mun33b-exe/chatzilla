@@ -4,11 +4,16 @@ import 'package:chatzilla/data/repositories/contact_repository.dart';
 import 'package:chatzilla/data/services/service_locator.dart';
 import 'package:chatzilla/logic/cubit/auth/auth_cubit.dart';
 import 'package:chatzilla/presentation/chat/chat_message_screen.dart';
+import 'package:chatzilla/presentation/chat/group_chat_screen.dart';
 import 'package:chatzilla/presentation/screens/auth/login_screen.dart';
 import 'package:chatzilla/presentation/widgets/chat_list_tile.dart';
+import 'package:chatzilla/presentation/widgets/group_list_tile.dart';
 import 'package:chatzilla/router/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import '../screens/group/create_group_screen.dart';
+import '../../data/models/chat_room_model.dart';
+import '../../data/models/group_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,7 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
   }
 
-  
   void _showLogoutDialog() {
     showDialog(
       context: context,
@@ -55,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();  
+                Navigator.of(context).pop();
               },
               child: Text(
                 'Cancel',
@@ -68,9 +72,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                Navigator.of(context).pop();  
+                Navigator.of(context).pop();
 
-                 
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -80,17 +83,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
 
                 try {
-                   
                   await getIt<AuthCubit>().signOut();
 
-                   
                   final navigator =
                       getIt<AppRouter>().navigatorKey.currentState;
                   if (navigator != null) {
-                     
                     navigator.pop();
 
-                     
                     navigator.pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (context) => const LoginScreen(),
@@ -99,13 +98,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   }
                 } catch (e) {
-                   
                   final navigator =
                       getIt<AppRouter>().navigatorKey.currentState;
                   if (navigator != null) {
-                    navigator.pop();  
+                    navigator.pop();
 
-                     
                     ScaffoldMessenger.of(navigator.context).showSnackBar(
                       SnackBar(
                         content: Text('Logout failed: ${e.toString()}'),
@@ -146,6 +143,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 "Contacts",
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 16),
+
+              // Add Create Group button
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  child: const Icon(Icons.group_add, color: Colors.white),
+                ),
+                title: const Text(
+                  'Create Group',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  getIt<AppRouter>().push(const CreateGroupScreen());
+                },
+              ),
+              const Divider(),
+
               Expanded(
                 child: FutureBuilder<List<Map<String, dynamic>>>(
                   future: _contactRepository.getRegisteredContacts(),
@@ -210,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Theme.of(context).primaryColor,
         actions: [
           InkWell(
-            onTap: _showLogoutDialog,  
+            onTap: _showLogoutDialog,
             child: const Padding(
               padding: EdgeInsets.only(right: 16.0),
               child: Icon(Icons.logout, size: 30, color: Colors.white),
@@ -218,42 +234,80 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: StreamBuilder(
-        stream: _chatRepository.getChatRooms(_currentUserId),
+      body: StreamBuilder<List<dynamic>>(
+        stream: _chatRepository.getAllChatRooms(_currentUserId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             print(snapshot.error);
-            return Center(child: Text("error:${snapshot.error}"));
+            return Center(child: Text("Error: ${snapshot.error}"));
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final chats = snapshot.data!;
-          if (chats.isEmpty) {
-            return const Center(child: Text("No recent chats"));
+
+          final allChats = snapshot.data!;
+          if (allChats.isEmpty) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    "No recent chats",
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "Start a conversation or create a group",
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
           }
+
           return ListView.builder(
-            itemCount: chats.length,
+            itemCount: allChats.length,
             itemBuilder: (context, index) {
-              final chat = chats[index];
-              return ChatListTile(
-                chat: chat,
-                currentUserId: _currentUserId,
-                onTap: () {
-                  final otherUserId = chat.participants.firstWhere(
-                    (id) => id != _currentUserId,
-                  );
-                  print("home screen current user id $_currentUserId");
-                  final outherUserName =
-                      chat.participantsName?[otherUserId] ?? "Unknown";
-                  getIt<AppRouter>().push(
-                    ChatMessageScreen(
-                      receiverId: otherUserId,
-                      receiverName: outherUserName,
-                    ),
-                  );
-                },
-              );
+              final chat = allChats[index];
+
+              // Handle individual chats
+              if (chat is ChatRoomModel) {
+                return ChatListTile(
+                  chat: chat,
+                  currentUserId: _currentUserId,
+                  onTap: () {
+                    final otherUserId = chat.participants.firstWhere(
+                      (id) => id != _currentUserId,
+                    );
+                    print("home screen current user id $_currentUserId");
+                    final otherUserName =
+                        chat.participantsName?[otherUserId] ?? "Unknown";
+                    getIt<AppRouter>().push(
+                      ChatMessageScreen(
+                        receiverId: otherUserId,
+                        receiverName: otherUserName,
+                      ),
+                    );
+                  },
+                );
+              }
+              // Handle group chats
+              else if (chat is GroupModel) {
+                return GroupListTile(
+                  group: chat,
+                  currentUserId: _currentUserId,
+                  onTap: () {
+                    getIt<AppRouter>().push(
+                      GroupChatScreen(groupId: chat.id, groupName: chat.name),
+                    );
+                  },
+                );
+              }
+
+              // Fallback for unknown chat types
+              return const SizedBox.shrink();
             },
           );
         },

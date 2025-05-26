@@ -4,11 +4,13 @@ enum MessageType { text, image, video }
 
 enum MessageStatus { sent, read }
 
+enum ChatType { individual, group }
+
 class ChatMessage {
   final String id;
   final String chatRoomId;
   final String senderId;
-  final String receiverId;
+  final String? receiverId;
   final String content;
   final MessageType type;
   final MessageStatus status;
@@ -18,12 +20,14 @@ class ChatMessage {
   final String? replyToContent;
   final String? replyToSenderId;
   final String? replyToSenderName;
+  final ChatType chatType;
+  final String? senderName;
 
   ChatMessage({
     required this.id,
     required this.chatRoomId,
     required this.senderId,
-    required this.receiverId,
+    this.receiverId,
     required this.content,
     this.type = MessageType.text,
     this.status = MessageStatus.sent,
@@ -33,14 +37,17 @@ class ChatMessage {
     this.replyToContent,
     this.replyToSenderId,
     this.replyToSenderName,
+    this.chatType = ChatType.individual,
+    this.senderName,
   });
+
   factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ChatMessage(
       id: doc.id,
       chatRoomId: data['chatRoomId'] as String,
       senderId: data['senderId'] as String,
-      receiverId: data['receiverId'] as String,
+      receiverId: data['receiverId'] as String?,
       content: data['content'] as String,
       type: MessageType.values.firstWhere(
         (e) => e.toString() == data['type'],
@@ -56,8 +63,14 @@ class ChatMessage {
       replyToContent: data['replyToContent'] as String?,
       replyToSenderId: data['replyToSenderId'] as String?,
       replyToSenderName: data['replyToSenderName'] as String?,
+      chatType: ChatType.values.firstWhere(
+        (e) => e.toString() == data['chatType'],
+        orElse: () => ChatType.individual,
+      ),
+      senderName: data['senderName'] as String?,
     );
   }
+
   Map<String, dynamic> toMap() {
     return {
       "chatRoomId": chatRoomId,
@@ -72,6 +85,8 @@ class ChatMessage {
       "replyToContent": replyToContent,
       "replyToSenderId": replyToSenderId,
       "replyToSenderName": replyToSenderName,
+      "chatType": chatType.toString(),
+      "senderName": senderName,
     };
   }
 
@@ -89,6 +104,8 @@ class ChatMessage {
     String? replyToContent,
     String? replyToSenderId,
     String? replyToSenderName,
+    ChatType? chatType,
+    String? senderName,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -104,6 +121,8 @@ class ChatMessage {
       replyToContent: replyToContent ?? this.replyToContent,
       replyToSenderId: replyToSenderId ?? this.replyToSenderId,
       replyToSenderName: replyToSenderName ?? this.replyToSenderName,
+      chatType: chatType ?? this.chatType,
+      senderName: senderName ?? this.senderName,
     );
   }
 }
