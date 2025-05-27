@@ -253,10 +253,14 @@ class ChatRepository extends BaseRepository {
         .collection('chatRooms')
         .doc(groupId)
         .collection('messages')
-        .where('senderId', isNotEqualTo: userId)
         .where('readBy', whereNotIn: [userId])
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .map(
+          (snapshot) =>
+              snapshot.docs
+                  .where((doc) => doc.data()['senderId'] != userId)
+                  .length,
+        );
   }
 
   Future<void> markMessagesAsRead(String chatRoomId, String userId) async {
@@ -435,19 +439,21 @@ class ChatRepository extends BaseRepository {
       final userData = UserModel.fromFirestore(doc);
       return userData.blockedUsers.contains(currentUserId);
     });
-  }
+  } // Get combined chat rooms (individual + groups)
 
-  // Get combined chat rooms (individual + groups)
   Stream<List<dynamic>> getAllChatRooms(String userId) {
-    // Get individual chats
+    // Get individual chats (exclude group chat rooms by filtering out documents with groupId)
     final individualChatsStream = _chatRooms
         .where("participants", arrayContains: userId)
-        .where("isGroup", isEqualTo: false)
         .orderBy('lastMessageTime', descending: true)
         .snapshots()
         .map(
           (snapshot) =>
               snapshot.docs
+                  .where((doc) {
+                    final data = doc.data() as Map<String, dynamic>?;
+                    return data?['groupId'] == null;
+                  })
                   .map((doc) => ChatRoomModel.fromFirestore(doc))
                   .toList(),
         );

@@ -1,11 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/group_model.dart';
-import '../models/chat_message.dart';
-import '../models/user_model.dart';
 
 class GroupRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   // Create a new group
   Future<String> createGroup({
     required String name,
@@ -15,36 +12,89 @@ class GroupRepository {
     required List<String> participants,
     required Map<String, String> participantsName,
   }) async {
+    print('GroupRepository: Starting createGroup...');
+    print('GroupRepository: Name: $name');
+    print('GroupRepository: CreatedBy: $createdBy');
+    print('GroupRepository: Participants: $participants');
+    print('GroupRepository: ParticipantsName: $participantsName');
+
+    // Validate input parameters
+    if (name.trim().isEmpty) {
+      throw Exception('Group name cannot be empty');
+    }
+    if (name.trim().length < 3) {
+      throw Exception('Group name must be at least 3 characters');
+    }
+    if (createdBy.isEmpty) {
+      throw Exception('Creator ID cannot be empty');
+    }
+    if (participants.isEmpty) {
+      throw Exception('Group must have at least one participant');
+    }
+    if (!participants.contains(createdBy)) {
+      throw Exception('Creator must be included in participants');
+    }
+
+    // Validate participants have names
+    for (final participantId in participants) {
+      if (!participantsName.containsKey(participantId) ||
+          participantsName[participantId]!.trim().isEmpty) {
+        throw Exception('All participants must have valid names');
+      }
+    }
+
     try {
+      print('GroupRepository: Creating Firestore references...');
       final groupRef = _firestore.collection('groups').doc();
+      final now = Timestamp.now();
 
       final group = GroupModel(
         id: groupRef.id,
-        name: name,
-        description: description,
+        name: name.trim(),
+        description: description?.trim(),
         imageUrl: imageUrl,
         createdBy: createdBy,
         participants: participants,
         admins: [createdBy], // Creator is admin by default
-        createdAt: Timestamp.now(),
+        createdAt: now,
         participantsName: participantsName,
       );
 
-      await groupRef.set(group.toMap());
+      print('GroupRepository: Group model created: ${group.toMap()}');
+      print('GroupRepository: groupRef.id: ${groupRef.id}');
 
-      // Create group chat room
-      await _firestore.collection('chatRooms').doc(groupRef.id).set({
-        'groupId': groupRef.id,
-        'participants': participants,
-        'isGroup': true,
-        'createdAt': Timestamp.now(),
-        'lastMessage': null,
-        'lastMessageTime': null,
-        'lastMessageSenderId': null,
+      // Use transaction to ensure atomic operation
+      print('GroupRepository: Starting Firestore transaction...');
+      await _firestore.runTransaction((transaction) async {
+        print(
+          'GroupRepository: Inside transaction - creating group document...',
+        );
+        // Create group document
+        transaction.set(groupRef, group.toMap());
+
+        // Create group chat room
+        print('GroupRepository: Creating chat room...');
+        final chatRoomRef = _firestore.collection('chatRooms').doc(groupRef.id);
+        transaction.set(chatRoomRef, {
+          'groupId': groupRef.id,
+          'participants': participants,
+          'participantsName': participantsName,
+          'isGroup': true,
+          'createdAt': now,
+          'lastMessage': null,
+          'lastMessageTime': null,
+          'lastMessageSenderId': null,
+        });
+        print('GroupRepository: Transaction operations completed');
       });
+
+      print('GroupRepository: Transaction completed successfully');
+      print('GroupRepository: Returning groupId: ${groupRef.id}');
 
       return groupRef.id;
     } catch (e) {
+      print('GroupRepository: Error in createGroup: $e');
+      print('GroupRepository: Error type: ${e.runtimeType}');
       throw Exception('Failed to create group: $e');
     }
   }
@@ -84,15 +134,52 @@ class GroupRepository {
     required List<String> newParticipants,
     required Map<String, String> newParticipantsName,
   }) async {
-    try {
-      await _firestore.collection('groups').doc(groupId).update({
-        'participants': FieldValue.arrayUnion(newParticipants),
-        'participantsName': newParticipantsName,
-      });
+    // Validate input
+    if (groupId.isEmpty) {
+      throw Exception('Group ID cannot be empty');
+    }
+    if (newParticipants.isEmpty) {
+      throw Exception('Must add at least one participant');
+    }
 
-      // Update chat room participants
-      await _firestore.collection('chatRooms').doc(groupId).update({
-        'participants': FieldValue.arrayUnion(newParticipants),
+    // Validate all new participants have names
+    for (final participantId in newParticipants) {
+      if (!newParticipantsName.containsKey(participantId) ||
+          newParticipantsName[participantId]!.trim().isEmpty) {
+        throw Exception('All participants must have valid names');
+      }
+    }
+
+    try {
+      // Use transaction to ensure atomic operation
+      await _firestore.runTransaction((transaction) async {
+        // Get current group data
+        final groupRef = _firestore.collection('groups').doc(groupId);
+        final groupDoc = await transaction.get(groupRef);
+
+        if (!groupDoc.exists) {
+          throw Exception('Group not found');
+        }
+
+        final currentGroup = GroupModel.fromFirestore(groupDoc);
+
+        // Merge participant names (preserve existing ones, add new ones)
+        final updatedParticipantsName = Map<String, String>.from(
+          currentGroup.participantsName,
+        );
+        updatedParticipantsName.addAll(newParticipantsName);
+
+        // Update group document
+        transaction.update(groupRef, {
+          'participants': FieldValue.arrayUnion(newParticipants),
+          'participantsName': updatedParticipantsName,
+        });
+
+        // Update chat room participants
+        final chatRoomRef = _firestore.collection('chatRooms').doc(groupId);
+        transaction.update(chatRoomRef, {
+          'participants': FieldValue.arrayUnion(newParticipants),
+        });
       });
     } catch (e) {
       throw Exception('Failed to add participants: $e');
@@ -104,24 +191,65 @@ class GroupRepository {
     required String groupId,
     required String participantId,
   }) async {
+    // Validate input
+    if (groupId.isEmpty) {
+      throw Exception('Group ID cannot be empty');
+    }
+    if (participantId.isEmpty) {
+      throw Exception('Participant ID cannot be empty');
+    }
+
     try {
-      final groupDoc = await _firestore.collection('groups').doc(groupId).get();
-      final group = GroupModel.fromFirestore(groupDoc);
+      // Use transaction to ensure atomic operation
+      await _firestore.runTransaction((transaction) async {
+        final groupRef = _firestore.collection('groups').doc(groupId);
+        final groupDoc = await transaction.get(groupRef);
 
-      Map<String, String> updatedParticipantsName = Map.from(
-        group.participantsName,
-      );
-      updatedParticipantsName.remove(participantId);
+        if (!groupDoc.exists) {
+          throw Exception('Group not found');
+        }
 
-      await _firestore.collection('groups').doc(groupId).update({
-        'participants': FieldValue.arrayRemove([participantId]),
-        'admins': FieldValue.arrayRemove([participantId]),
-        'participantsName': updatedParticipantsName,
-      });
+        final group = GroupModel.fromFirestore(groupDoc);
 
-      // Update chat room participants
-      await _firestore.collection('chatRooms').doc(groupId).update({
-        'participants': FieldValue.arrayRemove([participantId]),
+        // Check if participant is in the group
+        if (!group.participants.contains(participantId)) {
+          throw Exception('Participant is not in this group');
+        }
+
+        // Check if this is the last participant
+        if (group.participants.length <= 1) {
+          throw Exception('Cannot remove the last participant from group');
+        }
+
+        // Check if removing the creator (only creator can remove themselves)
+        if (group.createdBy == participantId && group.participants.length > 1) {
+          // Transfer ownership to another admin or first participant
+          final newCreator = group.admins.firstWhere(
+            (admin) => admin != participantId,
+            orElse:
+                () => group.participants.firstWhere((p) => p != participantId),
+          );
+          transaction.update(groupRef, {'createdBy': newCreator});
+        }
+
+        // Update participants name map
+        final updatedParticipantsName = Map<String, String>.from(
+          group.participantsName,
+        );
+        updatedParticipantsName.remove(participantId);
+
+        // Update group document
+        transaction.update(groupRef, {
+          'participants': FieldValue.arrayRemove([participantId]),
+          'admins': FieldValue.arrayRemove([participantId]),
+          'participantsName': updatedParticipantsName,
+        });
+
+        // Update chat room participants
+        final chatRoomRef = _firestore.collection('chatRooms').doc(groupId);
+        transaction.update(chatRoomRef, {
+          'participants': FieldValue.arrayRemove([participantId]),
+        });
       });
     } catch (e) {
       throw Exception('Failed to remove participant: $e');

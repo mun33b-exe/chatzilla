@@ -43,16 +43,19 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
   Future<void> _loadContacts() async {
     try {
+      // Use the optimized contact fetching with caching
       final contacts = await _contactRepository.getRegisteredContacts();
-      setState(() {
-        _allContacts = contacts;
-        _isLoadingContacts = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoadingContacts = false;
-      });
       if (mounted) {
+        setState(() {
+          _allContacts = contacts;
+          _isLoadingContacts = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingContacts = false;
+        });
         UiUtils.showSnackBar(context, message: 'Failed to load contacts: $e');
       }
     }
@@ -89,32 +92,56 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       return;
     }
 
-    // Get current user ID from auth repository
-    final currentUserId = getIt<AuthRepository>().currentUser?.uid ?? '';
-    final groupCubit = getIt.get<GroupCubit>(param1: currentUserId);
+    try {
+      // Get current user ID from auth repository
+      final currentUserId = getIt<AuthRepository>().currentUser?.uid ?? '';
 
-    // Prepare participants list (include current user)
-    final participants = [
-      currentUserId,
-      ..._selectedContacts.map((c) => c['id'] as String),
-    ];
+      if (currentUserId.isEmpty) {
+        UiUtils.showSnackBar(context, message: 'User not authenticated');
+        return;
+      }
 
-    // Prepare participants name map
-    final participantsName = <String, String>{currentUserId: 'You'};
+      // Get current user's actual name from database
+      final currentUserData = await getIt<AuthRepository>().getUserData(
+        currentUserId,
+      );
+      final currentUserName = currentUserData.fullName;
 
-    for (final contact in _selectedContacts) {
-      participantsName[contact['id']] = contact['name'];
+      if (currentUserName.isEmpty) {
+        UiUtils.showSnackBar(
+          context,
+          message: 'Unable to get current user name',
+        );
+        return;
+      }
+
+      final groupCubit = getIt.get<GroupCubit>(param1: currentUserId);
+
+      // Prepare participants list (include current user)
+      final participants = [
+        currentUserId,
+        ..._selectedContacts.map((c) => c['id'] as String),
+      ];
+
+      // Prepare participants name map with actual current user name
+      final participantsName = <String, String>{currentUserId: currentUserName};
+
+      for (final contact in _selectedContacts) {
+        participantsName[contact['id']] = contact['name'];
+      }
+
+      await groupCubit.createGroup(
+        name: _groupNameController.text.trim(),
+        description:
+            _descriptionController.text.trim().isEmpty
+                ? null
+                : _descriptionController.text.trim(),
+        participants: participants,
+        participantsName: participantsName,
+      );
+    } catch (e) {
+      UiUtils.showSnackBar(context, message: 'Error preparing group data: $e');
     }
-
-    await groupCubit.createGroup(
-      name: _groupNameController.text.trim(),
-      description:
-          _descriptionController.text.trim().isEmpty
-              ? null
-              : _descriptionController.text.trim(),
-      participants: participants,
-      participantsName: participantsName,
-    );
   }
 
   @override

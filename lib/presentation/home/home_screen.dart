@@ -10,7 +10,6 @@ import 'package:chatzilla/presentation/widgets/chat_list_tile.dart';
 import 'package:chatzilla/presentation/widgets/group_list_tile.dart';
 import 'package:chatzilla/router/app_router.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import '../screens/group/create_group_screen.dart';
 import '../../data/models/chat_room_model.dart';
 import '../../data/models/group_model.dart';
@@ -161,10 +160,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               const Divider(),
-
               Expanded(
-                child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _contactRepository.getRegisteredContacts(),
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _contactRepository.getRegisteredContactsStream(),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
                       return Center(child: Text("Error: ${snapshot.error}"));
@@ -190,6 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           title: Text(contact["name"]),
                           onTap: () {
+                            Navigator.pop(context); // Close the modal first
                             getIt<AppRouter>().push(
                               ChatMessageScreen(
                                 receiverId: contact['id'],

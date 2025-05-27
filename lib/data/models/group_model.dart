@@ -30,26 +30,68 @@ class GroupModel {
     required this.participantsName,
     this.isActive = true,
   });
-
   factory GroupModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return GroupModel(
-      id: doc.id,
-      name: data['name'] ?? '',
-      description: data['description'],
-      imageUrl: data['imageUrl'],
-      createdBy: data['createdBy'] ?? '',
-      participants: List<String>.from(data['participants'] ?? []),
-      admins: List<String>.from(data['admins'] ?? []),
-      createdAt: data['createdAt'] ?? Timestamp.now(),
-      lastMessageTime: data['lastMessageTime'],
-      lastMessage: data['lastMessage'],
-      lastMessageSenderId: data['lastMessageSenderId'],
-      participantsName: Map<String, String>.from(
-        data['participantsName'] ?? {},
-      ),
-      isActive: data['isActive'] ?? true,
-    );
+    try {
+      final data = doc.data();
+
+      // Check if document exists and has data
+      if (data == null) {
+        throw Exception('Group document does not exist or has no data');
+      }
+
+      final dataMap = data as Map<String, dynamic>;
+
+      // Validate required fields
+      if (dataMap['name'] == null || dataMap['name'].toString().isEmpty) {
+        throw Exception('Group name is required');
+      }
+
+      if (dataMap['createdBy'] == null ||
+          dataMap['createdBy'].toString().isEmpty) {
+        throw Exception('Group creator is required');
+      }
+
+      return GroupModel(
+        id: doc.id,
+        name: dataMap['name']?.toString() ?? '',
+        description: dataMap['description']?.toString(),
+        imageUrl: dataMap['imageUrl']?.toString(),
+        createdBy: dataMap['createdBy']?.toString() ?? '',
+        participants: _parseStringList(dataMap['participants']),
+        admins: _parseStringList(dataMap['admins']),
+        createdAt: _parseTimestamp(dataMap['createdAt']),
+        lastMessageTime: _parseTimestamp(dataMap['lastMessageTime']),
+        lastMessage: dataMap['lastMessage']?.toString(),
+        lastMessageSenderId: dataMap['lastMessageSenderId']?.toString(),
+        participantsName: _parseParticipantsName(dataMap['participantsName']),
+        isActive: dataMap['isActive'] as bool? ?? true,
+      );
+    } catch (e) {
+      throw Exception('Failed to parse group data: $e');
+    }
+  }
+
+  static List<String> _parseStringList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
+  static Timestamp _parseTimestamp(dynamic value) {
+    if (value is Timestamp) return value;
+    return Timestamp.now();
+  }
+
+  static Map<String, String> _parseParticipantsName(dynamic value) {
+    if (value == null) return {};
+    if (value is Map) {
+      return Map<String, String>.from(
+        value.map((key, val) => MapEntry(key.toString(), val.toString())),
+      );
+    }
+    return {};
   }
 
   Map<String, dynamic> toMap() {

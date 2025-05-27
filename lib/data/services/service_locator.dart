@@ -43,4 +43,10 @@ Future<void> setupServiceLocator() async {
       currentUserId: userId,
     ),
   );
+
+  // Preload contacts for better performance on first access
+  // This runs in the background and doesn't block app startup
+  getIt<ContactRepository>().preloadContacts().catchError((e) {
+    print('Background contact preloading failed: $e');
+  });
 }

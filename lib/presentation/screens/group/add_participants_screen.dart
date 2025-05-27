@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/common/custom_button.dart';
 import '../../../core/utils/ui_utils.dart';
+import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/contact_repository.dart';
 import '../../../data/services/service_locator.dart';
 import '../../../logic/cubit/group/group_cubit.dart';
@@ -36,6 +37,7 @@ class _AddParticipantsScreenState extends State<AddParticipantsScreen> {
 
   Future<void> _loadAvailableContacts() async {
     try {
+      // Use the optimized contact fetching with caching
       final allContacts = await _contactRepository.getRegisteredContacts();
 
       // Filter out contacts that are already in the group
@@ -47,15 +49,17 @@ class _AddParticipantsScreenState extends State<AddParticipantsScreen> {
               )
               .toList();
 
-      setState(() {
-        _availableContacts = availableContacts;
-        _isLoadingContacts = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoadingContacts = false;
-      });
       if (mounted) {
+        setState(() {
+          _availableContacts = availableContacts;
+          _isLoadingContacts = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingContacts = false;
+        });
         UiUtils.showSnackBar(context, message: 'Failed to load contacts: $e');
       }
     }
@@ -80,7 +84,15 @@ class _AddParticipantsScreenState extends State<AddParticipantsScreen> {
       return;
     }
 
-    final groupCubit = getIt<GroupCubit>();
+    // Get current user ID from auth repository
+    final currentUserId = getIt<AuthRepository>().currentUser?.uid ?? '';
+    if (currentUserId.isEmpty) {
+      UiUtils.showSnackBar(context, message: 'User not authenticated');
+      return;
+    }
+
+    // Get a fresh instance of GroupCubit with the current user ID
+    final groupCubit = getIt.get<GroupCubit>(param1: currentUserId);
 
     // Prepare new participants list
     final newParticipants =
@@ -101,8 +113,11 @@ class _AddParticipantsScreenState extends State<AddParticipantsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get current user ID from auth repository
+    final currentUserId = getIt<AuthRepository>().currentUser?.uid ?? '';
+
     return BlocProvider(
-      create: (context) => getIt<GroupCubit>(),
+      create: (context) => getIt.get<GroupCubit>(param1: currentUserId),
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Add Participants'),
@@ -195,9 +210,7 @@ class _AddParticipantsScreenState extends State<AddParticipantsScreen> {
                       Expanded(child: _buildAvailableContactsList()),
                     ],
                   ),
-                ),
-
-                // Add button
+                ), // Add button
                 Container(
                   padding: const EdgeInsets.all(16),
                   child: CustomButton(

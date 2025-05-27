@@ -64,6 +64,40 @@ class GroupCubit extends Cubit<GroupState> {
     try {
       emit(state.copyWith(isCreating: true, clearError: true));
 
+      print('GroupCubit: Starting group creation...');
+      print('GroupCubit: Name: $name');
+      print('GroupCubit: Participants: $participants');
+      print('GroupCubit: ParticipantsName: $participantsName');
+      print('GroupCubit: CurrentUserId: $currentUserId');
+
+      // Validate current user ID
+      if (currentUserId.isEmpty) {
+        throw Exception('User not authenticated');
+      }
+
+      // Validate input
+      if (name.trim().isEmpty) {
+        throw Exception('Group name is required');
+      }
+
+      if (participants.isEmpty) {
+        throw Exception('At least one participant is required');
+      }
+
+      if (!participants.contains(currentUserId)) {
+        throw Exception('Current user must be included in participants');
+      }
+
+      // Validate all participants have names
+      for (final participantId in participants) {
+        if (!participantsName.containsKey(participantId) ||
+            participantsName[participantId]!.trim().isEmpty) {
+          throw Exception('All participants must have names');
+        }
+      }
+
+      print('GroupCubit: Validation passed, calling repository...');
+
       final groupId = await _groupRepository.createGroup(
         name: name,
         description: description,
@@ -73,8 +107,11 @@ class GroupCubit extends Cubit<GroupState> {
         participantsName: participantsName,
       );
 
+      print('GroupCubit: Group created with ID: $groupId');
+
       emit(state.copyWith(isCreating: false, createdGroupId: groupId));
     } catch (e) {
+      print('GroupCubit: Error creating group: $e');
       emit(
         state.copyWith(isCreating: false, error: 'Failed to create group: $e'),
       );
