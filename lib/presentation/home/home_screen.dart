@@ -3,7 +3,6 @@ import 'package:chatzilla/data/repositories/chat_repository.dart';
 import 'package:chatzilla/data/repositories/contact_repository.dart';
 import 'package:chatzilla/data/services/service_locator.dart';
 import 'package:chatzilla/logic/cubit/auth/auth_cubit.dart';
-import 'package:chatzilla/logic/cubit/auth/auth_state.dart';
 import 'package:chatzilla/logic/cubit/group/groups_cubit.dart';
 import 'package:chatzilla/logic/cubit/group/groups_state.dart';
 import 'package:chatzilla/presentation/chat/chat_message_screen.dart';
@@ -29,6 +28,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final GroupsCubit _groupsCubit;
   late final String _currentUserId;
   late final TabController _tabController;
+  
+  // Search functionality
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
+  
   @override
   void initState() {
     _contactRepository = getIt<ContactRepository>();
@@ -42,15 +48,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       setState(() {});
     });
 
+    // Add search listener
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+
     // Load groups when the screen loads
     _groupsCubit.loadGroups();
 
     super.initState();
   }
-
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -219,52 +233,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Padding(
-          padding: EdgeInsets.only(left: 16.0),
-          child: Text("ChatZilla"),
-        ),
-        titleTextStyle: const TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-        ),
-        foregroundColor: Colors.white,
-        backgroundColor: Theme.of(context).primaryColor,
-        actions: [
-          IconButton(
-            onPressed: () {
-              // Show search or other actions
-            },
-            icon: const Icon(Icons.search, color: Colors.white),
-          ),
-          // Add Group Creation Button in AppBar
-          IconButton(
-            onPressed: () {
-              getIt<AppRouter>().push(const CreateGroupScreen());
-            },
-            icon: const Icon(Icons.group_add, color: Colors.white),
-            tooltip: 'Create Group',
-          ),
-          InkWell(
-            onTap: _showLogoutDialog,
-            child: const Padding(
-              padding: EdgeInsets.only(right: 16.0),
-              child: Icon(Icons.logout, size: 30, color: Colors.white),
-            ),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(text: "Chats"),
-            Tab(text: "Groups"),
-          ],
-        ),
-      ),
-      drawer: _buildNavigationDrawer(),
+      appBar: _buildAppBar(),
       body: TabBarView(
         controller: _tabController,
         children: [
@@ -285,177 +254,113 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               },
               child: const Icon(Icons.group_add, color: Colors.white),
             ),
-    );
+    );  }
+
+  void _startSearch() {
+    setState(() {
+      _isSearching = true;
+    });
+    _searchFocusNode.requestFocus();
   }
 
-  Widget _buildNavigationDrawer() {
-    return Drawer(
-      child: Column(
-        children: [
-          // Drawer Header
-          Container(
-            padding: const EdgeInsets.only(top: 50, left: 16, right: 16, bottom: 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Theme.of(context).primaryColor,
-                  Theme.of(context).primaryColorDark,
+  void _stopSearch() {
+    setState(() {
+      _isSearching = false;
+      _searchQuery = '';
+    });
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: _isSearching
+          ? TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: 'Search chats and groups...',
+                hintStyle: TextStyle(color: Colors.white70),
+                border: InputBorder.none,
+              ),
+              autofocus: true,
+            )
+          : const Padding(
+              padding: EdgeInsets.only(left: 16.0),
+              child: Text("ChatZilla"),
+            ),
+      titleTextStyle: const TextStyle(
+        fontSize: 28,
+        fontWeight: FontWeight.bold,
+      ),
+      foregroundColor: Colors.white,
+      backgroundColor: Theme.of(context).primaryColor,
+      leading: _isSearching 
+          ? IconButton(
+              onPressed: _stopSearch,
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+            )
+          : null,      actions: _isSearching
+          ? [
+              if (_searchController.text.isNotEmpty)
+                IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                  icon: const Icon(Icons.clear, color: Colors.white),
+                ),
+            ]
+          : [
+              IconButton(
+                onPressed: _startSearch,
+                icon: const Icon(Icons.search, color: Colors.white),
+                tooltip: 'Search',
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.white),
+                onSelected: (value) {
+                  if (value == 'create_group') {
+                    getIt<AppRouter>().push(const CreateGroupScreen());
+                  } else if (value == 'logout') {
+                    _showLogoutDialog();
+                  }
+                },
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                    value: 'create_group',
+                    child: Row(
+                      children: [
+                        Icon(Icons.group_add),
+                        SizedBox(width: 12),
+                        Text('Create Group'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout),
+                        SizedBox(width: 12),
+                        Text('Logout'),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  child: const Icon(
-                    Icons.person,
-                    size: 30,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [                      BlocBuilder<AuthCubit, AuthState>(
-                        builder: (context, authState) {
-                          return Text(
-                            authState.user?.email ?? 'User',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          );
-                        },
-                      ),
-                      const Text(
-                        'ChatZilla User',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Drawer Menu Items
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                ListTile(
-                  leading: Icon(
-                    Icons.group_add,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  title: const Text('Create Group'),
-                  subtitle: const Text('Start a new group chat'),
-                  onTap: () {
-                    Navigator.pop(context); // Close drawer
-                    getIt<AppRouter>().push(const CreateGroupScreen());
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.groups,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  title: const Text('My Groups'),
-                  subtitle: const Text('View all your groups'),
-                  onTap: () {
-                    Navigator.pop(context); // Close drawer
-                    _tabController.animateTo(1); // Switch to Groups tab
-                  },
-                ),
-                const Divider(),
-                ListTile(
-                  leading: Icon(
-                    Icons.contacts,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  title: const Text('Contacts'),
-                  subtitle: const Text('Manage your contacts'),
-                  onTap: () {
-                    Navigator.pop(context); // Close drawer
-                    _showContactsList(context);
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.search,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  title: const Text('Search'),
-                  subtitle: const Text('Find chats and groups'),
-                  onTap: () {
-                    Navigator.pop(context); // Close drawer
-                    // TODO: Implement search functionality
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Search feature coming soon!')),
-                    );
-                  },
-                ),
-                const Divider(),
-                ListTile(
-                  leading: Icon(
-                    Icons.settings,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  title: const Text('Settings'),
-                  subtitle: const Text('App preferences'),
-                  onTap: () {
-                    Navigator.pop(context); // Close drawer
-                    // TODO: Implement settings screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Settings coming soon!')),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.help_outline,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  title: const Text('Help & Support'),
-                  subtitle: const Text('Get help with ChatZilla'),
-                  onTap: () {
-                    Navigator.pop(context); // Close drawer
-                    // TODO: Implement help screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Help & Support coming soon!')),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          
-          // Logout section at bottom
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: ListTile(
-              leading: const Icon(
-                Icons.logout,
-                color: Colors.red,
-              ),
-              title: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () {
-                Navigator.pop(context); // Close drawer
-                _showLogoutDialog();
-              },
-            ),
-          ),
+            ],
+      bottom: TabBar(
+        controller: _tabController,
+        indicatorColor: Colors.white,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white70,
+        tabs: const [
+          Tab(text: "Chats"),
+          Tab(text: "Groups"),
         ],
       ),
     );
@@ -471,20 +376,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
-        }        final chats = snapshot.data!;
-        if (chats.isEmpty) {
+        }        final allChats = snapshot.data!;
+        
+        // Filter chats based on search query
+        final chats = _searchQuery.isEmpty 
+            ? allChats 
+            : allChats.where((chat) {
+                final otherUserId = chat.participants.firstWhere(
+                  (id) => id != _currentUserId,
+                  orElse: () => '',
+                );
+                final userName = chat.participantsName?[otherUserId] ?? "Unknown";
+                final lastMessage = chat.lastMessage ?? "";
+                
+                return userName.toLowerCase().contains(_searchQuery) ||
+                       lastMessage.toLowerCase().contains(_searchQuery);
+              }).toList();
+                if (chats.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.chat_bubble_outline,
+                  _searchQuery.isEmpty ? Icons.chat_bubble_outline : Icons.search_off,
                   size: 64,
                   color: Colors.grey,
                 ),
                 SizedBox(height: 16),
                 Text(
-                  "No recent chats",
+                  _searchQuery.isEmpty ? "No recent chats" : "No chats found",
                   style: TextStyle(
                     fontSize: 18,
                     color: Colors.grey,
@@ -493,40 +413,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  "Start a conversation or create a group",
+                  _searchQuery.isEmpty 
+                      ? "Start a conversation or create a group"
+                      : "No chats match your search",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey,
                   ),
                 ),
-                SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () => _showContactsList(context),
-                      icon: Icon(Icons.person_add),
-                      label: Text("Start Chat"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                if (_searchQuery.isEmpty) ...[
+                  SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => _showContactsList(context),
+                        icon: Icon(Icons.person_add),
+                        label: Text("Start Chat"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
                       ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        getIt<AppRouter>().push(const CreateGroupScreen());
-                      },
-                      icon: Icon(Icons.group_add),
-                      label: Text("Create Group"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColorDark,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          getIt<AppRouter>().push(const CreateGroupScreen());
+                        },
+                        icon: Icon(Icons.group_add),
+                        label: Text("Create Group"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColorDark,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             ),
           );
@@ -566,8 +490,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         if (state.status == GroupsStatus.loading) {
           return const Center(child: CircularProgressIndicator());
         }
-        
-        if (state.status == GroupsStatus.error) {
+          if (state.status == GroupsStatus.error) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -582,19 +505,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           );
         }
-          if (state.groups.isEmpty) {
+        
+        // Filter groups based on search query
+        final allGroups = state.groups;
+        final groups = _searchQuery.isEmpty 
+            ? allGroups 
+            : allGroups.where((group) {
+                final groupName = group.name.toLowerCase();
+                final lastMessage = group.lastMessage?.toLowerCase() ?? "";
+                
+                return groupName.contains(_searchQuery) ||
+                       lastMessage.contains(_searchQuery);
+              }).toList();
+            if (groups.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.group,
+                  _searchQuery.isEmpty ? Icons.group : Icons.search_off,
                   size: 64,
                   color: Colors.grey,
                 ),
                 SizedBox(height: 16),
                 Text(
-                  "No groups yet",
+                  _searchQuery.isEmpty ? "No groups yet" : "No groups found",
                   style: TextStyle(
                     fontSize: 18,
                     color: Colors.grey,
@@ -603,40 +538,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  "Create a group to start chatting with multiple people",
+                  _searchQuery.isEmpty 
+                      ? "Create a group to start chatting with multiple people"
+                      : "No groups match your search",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey,
                   ),
                 ),
-                SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.add_circle,
-                      color: Theme.of(context).primaryColor,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      "Tap the + button to create your first group",
-                      style: TextStyle(
+                if (_searchQuery.isEmpty) ...[
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_circle,
                         color: Theme.of(context).primaryColor,
-                        fontWeight: FontWeight.w500,
+                        size: 20,
                       ),
-                    ),
-                  ],
-                ),
+                      SizedBox(width: 8),
+                      Text(
+                        "Tap the + button to create your first group",
+                        style: TextStyle(
+                          color: Theme.of(context).primaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           );
-        }
-        
+        }        
         return ListView.builder(
-          itemCount: state.groups.length,
+          itemCount: groups.length,
           itemBuilder: (context, index) {
-            final group = state.groups[index];
+            final group = groups[index];
             return GroupListTile(
               group: group,
               currentUserId: _currentUserId,
