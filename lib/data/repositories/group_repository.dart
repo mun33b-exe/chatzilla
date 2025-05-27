@@ -19,10 +19,10 @@ class GroupRepository extends BaseRepository {
     String? groupImageUrl,
   }) async {
     final groupDoc = _groups.doc();
-    
+
     // Get creator's name and all member names
     final membersName = <String, String>{};
-    
+
     for (String memberId in members) {
       final userDoc = await firestore.collection("users").doc(memberId).get();
       if (userDoc.exists) {
@@ -42,13 +42,11 @@ class GroupRepository extends BaseRepository {
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       membersName: membersName,
-      lastReadTime: {
-        for (String member in members) member: Timestamp.now(),
-      },
+      lastReadTime: {for (String member in members) member: Timestamp.now()},
     );
 
     await groupDoc.set(group.toMap());
-    
+
     // Send system message about group creation
     await sendSystemMessage(
       groupId: group.id,
@@ -75,9 +73,10 @@ class GroupRepository extends BaseRepository {
         .orderBy('lastMessageTime', descending: true)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => GroupModel.fromFirestore(doc))
-              .toList(),
+          (snapshot) =>
+              snapshot.docs
+                  .map((doc) => GroupModel.fromFirestore(doc))
+                  .toList(),
         );
   }
 
@@ -150,24 +149,26 @@ class GroupRepository extends BaseRepository {
 
     await messageDoc.set(message.toMap());
   }
+
   // Get group messages
-  Stream<List<ChatMessage>> getGroupMessagesStream(String groupId, {
+  Stream<List<ChatMessage>> getGroupMessagesStream(
+    String groupId, {
     DocumentSnapshot? lastDocument,
   }) {
-    var query = getGroupMessages(groupId)
-        .orderBy('timestamp', descending: true)
-        .limit(20);
+    var query = getGroupMessages(
+      groupId,
+    ).orderBy('timestamp', descending: true).limit(20);
 
     if (lastDocument != null) {
       query = query.startAfterDocument(lastDocument);
     }
 
     return query.snapshots().map(
-      (snapshot) => snapshot.docs
-          .map((doc) => ChatMessage.fromFirestore(doc))
-          .toList(),
+      (snapshot) =>
+          snapshot.docs.map((doc) => ChatMessage.fromFirestore(doc)).toList(),
     );
   }
+
   // Load more messages
   Future<List<ChatMessage>> getMoreGroupMessages(
     String groupId, {
@@ -179,9 +180,7 @@ class GroupRepository extends BaseRepository {
         .limit(20);
 
     final snapshot = await query.get();
-    return snapshot.docs
-        .map((doc) => ChatMessage.fromFirestore(doc))
-        .toList();
+    return snapshot.docs.map((doc) => ChatMessage.fromFirestore(doc)).toList();
   }
 
   // Add member to group
@@ -191,17 +190,17 @@ class GroupRepository extends BaseRepository {
     required String addedBy,
   }) async {
     final batch = firestore.batch();
-    
+
     // Get member's name
     final userDoc = await firestore.collection("users").doc(memberId).get();
     final userData = userDoc.data() as Map<String, dynamic>;
     final memberName = userData['fullName']?.toString() ?? "";
-    
+
     // Get group to check current members
     final groupDoc = await _groups.doc(groupId).get();
     final groupData = groupDoc.data() as Map<String, dynamic>;
     final currentMembers = List<String>.from(groupData['members']);
-    
+
     if (!currentMembers.contains(memberId)) {
       // Add member to group
       batch.update(_groups.doc(groupId), {
@@ -233,7 +232,7 @@ class GroupRepository extends BaseRepository {
     required String removedBy,
   }) async {
     final batch = firestore.batch();
-    
+
     // Get member's name before removing
     final userDoc = await firestore.collection("users").doc(memberId).get();
     final userData = userDoc.data() as Map<String, dynamic>;
@@ -242,7 +241,9 @@ class GroupRepository extends BaseRepository {
     // Remove member from group
     batch.update(_groups.doc(groupId), {
       'members': FieldValue.arrayRemove([memberId]),
-      'admins': FieldValue.arrayRemove([memberId]), // Also remove from admins if present
+      'admins': FieldValue.arrayRemove([
+        memberId,
+      ]), // Also remove from admins if present
       'updatedAt': Timestamp.now(),
     });
 
@@ -266,7 +267,7 @@ class GroupRepository extends BaseRepository {
     required String userId,
   }) async {
     final batch = firestore.batch();
-    
+
     // Get user's name
     final userDoc = await firestore.collection("users").doc(userId).get();
     final userData = userDoc.data() as Map<String, dynamic>;
@@ -296,7 +297,7 @@ class GroupRepository extends BaseRepository {
     required String promotedBy,
   }) async {
     final batch = firestore.batch();
-    
+
     // Add to admins array
     batch.update(_groups.doc(groupId), {
       'admins': FieldValue.arrayUnion([memberId]),
@@ -324,7 +325,7 @@ class GroupRepository extends BaseRepository {
     required String removedBy,
   }) async {
     final batch = firestore.batch();
-    
+
     // Remove from admins array
     batch.update(_groups.doc(groupId), {
       'admins': FieldValue.arrayRemove([memberId]),
@@ -352,9 +353,7 @@ class GroupRepository extends BaseRepository {
     String? description,
     String? groupImageUrl,
   }) async {
-    final updates = <String, dynamic>{
-      'updatedAt': Timestamp.now(),
-    };
+    final updates = <String, dynamic>{'updatedAt': Timestamp.now()};
 
     if (name != null) updates['name'] = name;
     if (description != null) updates['description'] = description;
@@ -373,20 +372,53 @@ class GroupRepository extends BaseRepository {
       'updatedAt': Timestamp.now(),
     });
   }
+
   // Mark messages as read for a user
   Future<void> markGroupMessagesAsRead(String groupId, String userId) async {
     try {
       final batch = firestore.batch();
 
-      final unreadMessages = await getGroupMessages(groupId)
-          .where('readBy', whereNotIn: [userId])
-          .where('senderId', isNotEqualTo: userId)
-          .get();
+      // Get the group to know all members
+      final groupDoc = await _groups.doc(groupId).get();
+      if (!groupDoc.exists) return;
 
+      final groupData = groupDoc.data() as Map<String, dynamic>;
+      final groupMembers = List<String>.from(groupData['members'] ?? []);
+
+      // Get all messages not sent by this user that they haven't read yet
+      final unreadMessages =
+          await getGroupMessages(
+            groupId,
+          ).where('senderId', isNotEqualTo: userId).get();
+
+      // Filter messages where userId is not in readBy array
       for (final doc in unreadMessages.docs) {
-        batch.update(doc.reference, {
-          'readBy': FieldValue.arrayUnion([userId]),
-        });
+        final data = doc.data() as Map<String, dynamic>;
+        final readBy = List<String>.from(data['readBy'] ?? []);
+        final senderId = data['senderId'] as String;
+
+        if (!readBy.contains(userId)) {
+          // Add this user to readBy array
+          final updatedReadBy = [...readBy, userId];
+
+          // Check if all group members (except sender) have now read the message
+          final otherMembers =
+              groupMembers.where((member) => member != senderId).toList();
+          final isReadByAll = otherMembers.every(
+            (member) => updatedReadBy.contains(member),
+          );
+
+          final updateData = <String, dynamic>{
+            'readBy': FieldValue.arrayUnion([userId]),
+          };
+
+          // If all members have read it, update status to read
+          if (isReadByAll) {
+            updateData['status'] = MessageStatus.read.toString();
+          }
+
+          batch.update(doc.reference, updateData);
+        }
       }
 
       // Update last read time
@@ -399,6 +431,7 @@ class GroupRepository extends BaseRepository {
       print("Error marking group messages as read: $e");
     }
   }
+
   // Get unread count for group
   Stream<int> getGroupUnreadCount(String groupId, String userId) {
     return getGroupMessages(groupId)
@@ -440,13 +473,12 @@ class GroupRepository extends BaseRepository {
 
   // Search groups by name
   Future<List<GroupModel>> searchGroups(String query) async {
-    final snapshot = await _groups
-        .where('name', isGreaterThanOrEqualTo: query)
-        .where('name', isLessThanOrEqualTo: query + '\uf8ff')
-        .get();
+    final snapshot =
+        await _groups
+            .where('name', isGreaterThanOrEqualTo: query)
+            .where('name', isLessThanOrEqualTo: query + '\uf8ff')
+            .get();
 
-    return snapshot.docs
-        .map((doc) => GroupModel.fromFirestore(doc))
-        .toList();
+    return snapshot.docs.map((doc) => GroupModel.fromFirestore(doc)).toList();
   }
 }

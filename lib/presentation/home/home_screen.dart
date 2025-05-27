@@ -28,13 +28,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final GroupsCubit _groupsCubit;
   late final String _currentUserId;
   late final TabController _tabController;
-  
+
   // Search functionality
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
-  
+
   @override
   void initState() {
     _contactRepository = getIt<ContactRepository>();
@@ -60,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     super.initState();
   }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -68,7 +69,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  
+  void _navigateToCreateGroup() {
+    try {
+      getIt<AppRouter>().push(const CreateGroupScreen());
+    } catch (e) {
+      // Fallback to direct Navigator if AppRouter fails
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => const CreateGroupScreen()),
+      );
+    }
+  }
+
   void _showLogoutDialog() {
     showDialog(
       context: context,
@@ -92,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();  
+                Navigator.of(context).pop();
               },
               child: Text(
                 'Cancel',
@@ -105,9 +116,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             ElevatedButton(
               onPressed: () async {
-                Navigator.of(context).pop();  
+                Navigator.of(context).pop();
 
-                 
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -117,17 +127,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 );
 
                 try {
-                   
                   await getIt<AuthCubit>().signOut();
 
-                   
                   final navigator =
                       getIt<AppRouter>().navigatorKey.currentState;
                   if (navigator != null) {
-                     
                     navigator.pop();
 
-                     
                     navigator.pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (context) => const LoginScreen(),
@@ -136,13 +142,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   }
                 } catch (e) {
-                   
                   final navigator =
                       getIt<AppRouter>().navigatorKey.currentState;
                   if (navigator != null) {
-                    navigator.pop();  
+                    navigator.pop();
 
-                     
                     ScaffoldMessenger.of(navigator.context).showSnackBar(
                       SnackBar(
                         content: Text('Logout failed: ${e.toString()}'),
@@ -230,6 +234,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -243,18 +248,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _buildGroupsTab(),
         ],
       ),
-      floatingActionButton: _tabController.index == 0
-          ? FloatingActionButton(
-              onPressed: () => _showContactsList(context),
-              child: const Icon(Icons.chat, color: Colors.white),
-            )
-          : FloatingActionButton(
-              onPressed: () {
-                getIt<AppRouter>().push(const CreateGroupScreen());
-              },
-              child: const Icon(Icons.group_add, color: Colors.white),
-            ),
-    );  }
+      floatingActionButton:
+          _tabController.index == 0
+              ? FloatingActionButton(
+                onPressed: () => _showContactsList(context),
+                child: const Icon(Icons.chat, color: Colors.white),
+              )
+              : FloatingActionButton(
+                onPressed: () {
+                  getIt<AppRouter>().push(const CreateGroupScreen());
+                },
+                child: const Icon(Icons.group_add, color: Colors.white),
+              ),
+    );
+  }
 
   void _startSearch() {
     setState(() {
@@ -274,94 +281,103 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: _isSearching
-          ? TextField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'Search chats and groups...',
-                hintStyle: TextStyle(color: Colors.white70),
-                border: InputBorder.none,
+      title:
+          _isSearching
+              ? TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'Search chats and groups...',
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: InputBorder.none,
+                ),
+                autofocus: true,
+              )
+              : const Padding(
+                padding: EdgeInsets.only(left: 16.0),
+                child: Text(
+                  "Chatzilla",
+                  style: TextStyle(
+                    fontFamily: 'Billabong',
+                    fontSize: 40,
+                    letterSpacing: 3.0,
+                  ),
+                ),
               ),
-              autofocus: true,
-            )
-          : const Padding(
-              padding: EdgeInsets.only(left: 16.0),
-              child: Text("ChatZilla"),
-            ),
       titleTextStyle: const TextStyle(
         fontSize: 28,
         fontWeight: FontWeight.bold,
       ),
       foregroundColor: Colors.white,
       backgroundColor: Theme.of(context).primaryColor,
-      leading: _isSearching 
-          ? IconButton(
-              onPressed: _stopSearch,
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-            )
-          : null,      actions: _isSearching
-          ? [
-              if (_searchController.text.isNotEmpty)
+      leading:
+          _isSearching
+              ? IconButton(
+                onPressed: _stopSearch,
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+              )
+              : null,
+      actions:
+          _isSearching
+              ? [
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                    },
+                    icon: const Icon(Icons.clear, color: Colors.white),
+                  ),
+              ]
+              : [
                 IconButton(
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                  },
-                  icon: const Icon(Icons.clear, color: Colors.white),
+                  onPressed: _startSearch,
+                  icon: const Icon(Icons.search, color: Colors.white),
+                  tooltip: 'Search',
                 ),
-            ]
-          : [
-              IconButton(
-                onPressed: _startSearch,
-                icon: const Icon(Icons.search, color: Colors.white),
-                tooltip: 'Search',
-              ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onSelected: (value) {
-                  if (value == 'create_group') {
-                    getIt<AppRouter>().push(const CreateGroupScreen());
-                  } else if (value == 'logout') {
-                    _showLogoutDialog();
-                  }
-                },
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  const PopupMenuItem<String>(
-                    value: 'create_group',
-                    child: Row(
-                      children: [
-                        Icon(Icons.group_add),
-                        SizedBox(width: 12),
-                        Text('Create Group'),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.white),
+                  onSelected: (value) {
+                    if (value == 'create_group') {
+                      _navigateToCreateGroup();
+                    } else if (value == 'logout') {
+                      _showLogoutDialog();
+                    }
+                  },
+                  itemBuilder:
+                      (BuildContext context) => <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: 'create_group',
+                          child: Row(
+                            children: [
+                              Icon(Icons.group_add),
+                              SizedBox(width: 12),
+                              Text('Create Group'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'logout',
+                          child: Row(
+                            children: [
+                              Icon(Icons.logout),
+                              SizedBox(width: 12),
+                              Text('Logout'),
+                            ],
+                          ),
+                        ),
                       ],
-                    ),
-                  ),
-                  const PopupMenuItem<String>(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout),
-                        SizedBox(width: 12),
-                        Text('Logout'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
       bottom: TabBar(
         controller: _tabController,
         indicatorColor: Colors.white,
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white70,
-        tabs: const [
-          Tab(text: "Chats"),
-          Tab(text: "Groups"),
-        ],
+        tabs: const [Tab(text: "Chats"), Tab(text: "Groups")],
       ),
     );
   }
@@ -376,29 +392,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
-        }        final allChats = snapshot.data!;
-        
+        }
+        final allChats = snapshot.data!;
+
         // Filter chats based on search query
-        final chats = _searchQuery.isEmpty 
-            ? allChats 
-            : allChats.where((chat) {
-                final otherUserId = chat.participants.firstWhere(
-                  (id) => id != _currentUserId,
-                  orElse: () => '',
-                );
-                final userName = chat.participantsName?[otherUserId] ?? "Unknown";
-                final lastMessage = chat.lastMessage ?? "";
-                
-                return userName.toLowerCase().contains(_searchQuery) ||
-                       lastMessage.toLowerCase().contains(_searchQuery);
-              }).toList();
-                if (chats.isEmpty) {
+        final chats =
+            _searchQuery.isEmpty
+                ? allChats
+                : allChats.where((chat) {
+                  final otherUserId = chat.participants.firstWhere(
+                    (id) => id != _currentUserId,
+                    orElse: () => '',
+                  );
+                  final userName =
+                      chat.participantsName?[otherUserId] ?? "Unknown";
+                  final lastMessage = chat.lastMessage ?? "";
+
+                  return userName.toLowerCase().contains(_searchQuery) ||
+                      lastMessage.toLowerCase().contains(_searchQuery);
+                }).toList();
+        if (chats.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  _searchQuery.isEmpty ? Icons.chat_bubble_outline : Icons.search_off,
+                  _searchQuery.isEmpty
+                      ? Icons.chat_bubble_outline
+                      : Icons.search_off,
                   size: 64,
                   color: Colors.grey,
                 ),
@@ -413,13 +434,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  _searchQuery.isEmpty 
+                  _searchQuery.isEmpty
                       ? "Start a conversation or create a group"
                       : "No chats match your search",
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(color: Colors.grey),
                 ),
                 if (_searchQuery.isEmpty) ...[
                   SizedBox(height: 24),
@@ -433,7 +452,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Theme.of(context).primaryColor,
                           foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
                       ),
                       ElevatedButton.icon(
@@ -445,7 +467,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Theme.of(context).primaryColorDark,
                           foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
                       ),
                     ],
@@ -490,7 +515,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         if (state.status == GroupsStatus.loading) {
           return const Center(child: CircularProgressIndicator());
         }
-          if (state.status == GroupsStatus.error) {
+        if (state.status == GroupsStatus.error) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -505,19 +530,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           );
         }
-        
+
         // Filter groups based on search query
         final allGroups = state.groups;
-        final groups = _searchQuery.isEmpty 
-            ? allGroups 
-            : allGroups.where((group) {
-                final groupName = group.name.toLowerCase();
-                final lastMessage = group.lastMessage?.toLowerCase() ?? "";
-                
-                return groupName.contains(_searchQuery) ||
-                       lastMessage.contains(_searchQuery);
-              }).toList();
-            if (groups.isEmpty) {
+        final groups =
+            _searchQuery.isEmpty
+                ? allGroups
+                : allGroups.where((group) {
+                  final groupName = group.name.toLowerCase();
+                  final lastMessage = group.lastMessage?.toLowerCase() ?? "";
+
+                  return groupName.contains(_searchQuery) ||
+                      lastMessage.contains(_searchQuery);
+                }).toList();
+        if (groups.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -538,13 +564,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  _searchQuery.isEmpty 
+                  _searchQuery.isEmpty
                       ? "Create a group to start chatting with multiple people"
                       : "No groups match your search",
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(color: Colors.grey),
                 ),
                 if (_searchQuery.isEmpty) ...[
                   SizedBox(height: 16),
@@ -570,7 +594,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ],
             ),
           );
-        }        
+        }
         return ListView.builder(
           itemCount: groups.length,
           itemBuilder: (context, index) {
@@ -580,10 +604,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               currentUserId: _currentUserId,
               onTap: () {
                 getIt<AppRouter>().push(
-                  GroupChatScreen(
-                    groupId: group.id,
-                    groupName: group.name,
-                  ),
+                  GroupChatScreen(groupId: group.id, groupName: group.name),
                 );
               },
             );

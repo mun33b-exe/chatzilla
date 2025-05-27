@@ -37,7 +37,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   final Map<String, AnimationController> _animationControllers = {};
   final Map<String, Animation<double>> _animations = {};
   late final String _currentUserId;
-  
+
   @override
   void initState() {
     super.initState();
@@ -45,21 +45,21 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     messageController.addListener(_onTextChanged);
     _scrollController.addListener(_onScroll);
   }
+
   void _initGroupChat() async {
     // Get current user data from AuthCubit
     final authCubit = getIt<AuthCubit>();
     final currentUser = authCubit.state.user;
     final currentUserName = currentUser?.fullName ?? "Unknown User";
     _currentUserId = currentUser?.uid ?? "";
-    
+
     // Create GroupChatCubit with the current user name
     _groupChatCubit = getIt<GroupChatCubit>(param1: currentUserName);
     _groupChatCubit.enterGroup(widget.groupId);
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels <= 200) {
       _groupChatCubit.loadMoreMessages();
     }
   }
@@ -79,7 +79,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
-        0,
+        _scrollController.position.maxScrollExtent,
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeOutCubic,
       );
@@ -111,12 +111,10 @@ class _GroupChatScreenState extends State<GroupChatScreen>
       vsync: this,
     );
 
-    final animation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: Curves.elasticOut,
-      ),
-    );
+    final animation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: controller, curve: Curves.elasticOut));
 
     _animationControllers[message.id] = controller;
     _animations[message.id] = animation;
@@ -153,6 +151,8 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     List<Widget> widgets = [];
     String? lastDateString;
 
+    // Reverse messages since they come from Firestore in descending order (newest first)
+    // but we want to display them chronologically (oldest first)
     final reversedMessages = messages.reversed.toList();
 
     for (int i = 0; i < reversedMessages.length; i++) {
@@ -204,7 +204,8 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     });
 
     final currentState = _groupChatCubit.state;
-    final replyToMessage = currentState.replyingToMessage;    String? replyToSenderName;
+    final replyToMessage = currentState.replyingToMessage;
+    String? replyToSenderName;
     if (replyToMessage != null) {
       if (replyToMessage.senderId == _currentUserId) {
         replyToSenderName = "You";
@@ -242,12 +243,12 @@ class _GroupChatScreenState extends State<GroupChatScreen>
           builder: (context, state) {
             return GestureDetector(
               onTap: () {
-                if (state.group != null) {                  Navigator.push(
+                if (state.group != null) {
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => GroupInfoScreen(
-                        group: state.group!,
-                      ),
+                      builder:
+                          (context) => GroupInfoScreen(group: state.group!),
                     ),
                   );
                 }
@@ -256,9 +257,10 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                 children: [
                   CircleAvatar(
                     backgroundColor: Theme.of(context).primaryColorDark,
-                    foregroundImage: state.group?.groupImageUrl != null
-                        ? NetworkImage(state.group!.groupImageUrl!)
-                        : null,
+                    foregroundImage:
+                        state.group?.groupImageUrl != null
+                            ? NetworkImage(state.group!.groupImageUrl!)
+                            : null,
                     child: Text(
                       widget.groupName.isNotEmpty
                           ? widget.groupName[0].toUpperCase()
@@ -313,9 +315,9 @@ class _GroupChatScreenState extends State<GroupChatScreen>
         listener: (context, state) {
           _hasNewMessages(state.messages);
           if (state.error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error!)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.error!)));
           }
         },
         bloc: _groupChatCubit,
@@ -334,7 +336,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                 Expanded(
                   child: ListView(
                     controller: _scrollController,
-                    reverse: true,
+                    reverse: false,
                     physics: const BouncingScrollPhysics(),
                     children: _buildMessageWidgets(state.messages),
                   ),
@@ -356,16 +358,17 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                         if (state.replyingToMessage != null)
                           Container(
                             margin: const EdgeInsets.only(bottom: 8),
-                            child:                            ReplyMessageWidget(
+                            child: ReplyMessageWidget(
                               replyToMessage: state.replyingToMessage,
                               currentUserId: _currentUserId,
                               isPreview: true,
                               onCancel: () => _groupChatCubit.clearReply(),
-                              senderName: state.replyingToMessage?.senderId ==
-                                      _currentUserId
-                                  ? "You"
-                                  : state.replyingToMessage?.senderName ??
-                                      "Unknown User",
+                              senderName:
+                                  state.replyingToMessage?.senderId ==
+                                          _currentUserId
+                                      ? "You"
+                                      : state.replyingToMessage?.senderName ??
+                                          "Unknown User",
                             ),
                           ),
                         Row(
@@ -385,7 +388,8 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                                     }
                                   },
                                   controller: messageController,
-                                  textCapitalization: TextCapitalization.sentences,
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
                                   keyboardType: TextInputType.multiline,
                                   maxLines: null,
                                   minLines: 1,
@@ -422,7 +426,8 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                             GestureDetector(
                               onTap: _isComposing ? _handleSendMessage : null,
                               child: CircleAvatar(
-                                backgroundColor: Theme.of(context).primaryColorDark,
+                                backgroundColor:
+                                    Theme.of(context).primaryColorDark,
                                 radius: 22,
                                 child: Icon(
                                   Icons.send,
@@ -445,18 +450,21 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                                     ),
                                   );
                                 setState(() {
-                                  _isComposing = messageController.text.isNotEmpty;
+                                  _isComposing =
+                                      messageController.text.isNotEmpty;
                                 });
                               },
                               config: Config(
                                 height: 250,
                                 emojiViewConfig: EmojiViewConfig(
                                   columns: 7,
-                                  emojiSizeMax: 32.0 * (Platform.isIOS ? 1.30 : 1.0),
+                                  emojiSizeMax:
+                                      32.0 * (Platform.isIOS ? 1.30 : 1.0),
                                   verticalSpacing: 0,
                                   horizontalSpacing: 0,
                                   gridPadding: EdgeInsets.zero,
-                                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                                  backgroundColor:
+                                      Theme.of(context).scaffoldBackgroundColor,
                                   loadingIndicator: const SizedBox.shrink(),
                                 ),
                                 categoryViewConfig: const CategoryViewConfig(
@@ -464,7 +472,8 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                                 ),
                                 bottomActionBarConfig: BottomActionBarConfig(
                                   enabled: true,
-                                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                                  backgroundColor:
+                                      Theme.of(context).scaffoldBackgroundColor,
                                   buttonColor: Theme.of(context).primaryColor,
                                 ),
                                 skinToneConfig: const SkinToneConfig(
@@ -473,8 +482,10 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                                   indicatorColor: Colors.grey,
                                 ),
                                 searchViewConfig: SearchViewConfig(
-                                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                                  buttonIconColor: Theme.of(context).primaryColor,
+                                  backgroundColor:
+                                      Theme.of(context).scaffoldBackgroundColor,
+                                  buttonIconColor:
+                                      Theme.of(context).primaryColor,
                                 ),
                               ),
                             ),
@@ -490,10 +501,11 @@ class _GroupChatScreenState extends State<GroupChatScreen>
       ),
     );
   }
+
   Widget _buildMessageBubble(ChatMessage message) {
     final currentUserId = _currentUserId;
     final isMe = message.senderId == currentUserId;
-    
+
     // Handle system messages
     if (message.type == MessageType.systemMessage) {
       return Container(
@@ -523,7 +535,8 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     Widget messageWidget = Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
@@ -548,20 +561,9 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                 _showMessageOptions(context, message);
               },
               child: Column(
-                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
-                  if (!isMe && message.senderName != null)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12, bottom: 4),
-                      child: Text(
-                        message.senderName!,
-                        style: TextStyle(
-                          color: Theme.of(context).primaryColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
                   if (message.replyToMessageId != null) ...[
                     ReplyMessageWidget(
                       replyToMessage: ChatMessage(
@@ -588,16 +590,34 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: isMe
-                          ? Theme.of(context).primaryColor
-                          : Theme.of(context).primaryColor.withOpacity(0.1),
+                      color:
+                          isMe
+                              ? Theme.of(context).primaryColor
+                              : Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
-                      crossAxisAlignment: isMe
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          isMe
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
                       children: [
+                        // Show sender name inside bubble for all messages
+                        if (message.senderName != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              isMe ? "You" : message.senderName!,
+                              style: TextStyle(
+                                color:
+                                    isMe
+                                        ? Colors.white70
+                                        : Theme.of(context).primaryColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         Text(
                           message.content,
                           style: TextStyle(
@@ -610,7 +630,9 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              DateFormat('h:mm a').format(message.timestamp.toDate()),
+                              DateFormat(
+                                'h:mm a',
+                              ).format(message.timestamp.toDate()),
                               style: TextStyle(
                                 color: isMe ? Colors.white70 : Colors.grey[600],
                                 fontSize: 12,
@@ -621,9 +643,10 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                               Icon(
                                 Icons.done_all,
                                 size: 14,
-                                color: message.status == MessageStatus.read
-                                    ? Theme.of(context).primaryColorDark
-                                    : Colors.white70,
+                                color:
+                                    message.status == MessageStatus.read
+                                        ? Theme.of(context).primaryColorDark
+                                        : Colors.white70,
                               ),
                             ],
                           ],
@@ -644,10 +667,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
       return AnimatedBuilder(
         animation: animation,
         builder: (context, child) {
-          return Transform.scale(
-            scale: animation.value,
-            child: messageWidget,
-          );
+          return Transform.scale(scale: animation.value, child: messageWidget);
         },
       );
     }
@@ -658,30 +678,35 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   void _showMessageOptions(BuildContext context, ChatMessage message) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,          children: [
-            ListTile(
-              leading: const Icon(Icons.reply),
-              title: const Text("Reply"),
-              onTap: () {
-                Navigator.pop(context);
-                _groupChatCubit.setReplyToMessage(message);
-              },
+      builder:
+          (context) => Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.reply),
+                  title: const Text("Reply"),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _groupChatCubit.setReplyToMessage(message);
+                  },
+                ),
+                if (message.senderId == _currentUserId)
+                  ListTile(
+                    leading: const Icon(Icons.delete, color: Colors.red),
+                    title: const Text(
+                      "Delete",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      // TODO: Implement delete message
+                    },
+                  ),
+              ],
             ),
-            if (message.senderId == _currentUserId)
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text("Delete", style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  // TODO: Implement delete message
-                },
-              ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }

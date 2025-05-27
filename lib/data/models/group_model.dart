@@ -37,9 +37,9 @@ class GroupModel {
     this.isTyping = false,
     this.typingUserId,
     GroupSettings? settings,
-  })  : lastReadTime = lastReadTime ?? {},
-        membersName = membersName ?? {},
-        settings = settings ?? GroupSettings();
+  }) : lastReadTime = lastReadTime ?? {},
+       membersName = membersName ?? {},
+       settings = settings ?? GroupSettings();
 
   factory GroupModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -60,9 +60,10 @@ class GroupModel {
       membersName: Map<String, String>.from(data['membersName'] ?? {}),
       isTyping: data['isTyping'] ?? false,
       typingUserId: data['typingUserId'],
-      settings: data['settings'] != null
-          ? GroupSettings.fromMap(data['settings'])
-          : GroupSettings(),
+      settings:
+          data['settings'] != null
+              ? GroupSettings.fromMap(data['settings'])
+              : GroupSettings(),
     );
   }
 
@@ -126,21 +127,27 @@ class GroupModel {
       settings: settings ?? this.settings,
     );
   }
+
   bool isAdmin(String userId) => admins.contains(userId);
   bool isMember(String userId) => members.contains(userId);
   bool isCreator(String userId) => createdBy == userId;
-
   bool hasUnreadMessages(String userId) {
-    if (lastMessageTime == null || lastReadTime == null) {
+    // If there's no last message, there can't be unread messages
+    if (lastMessageTime == null) {
       return false;
     }
-    
-    final userLastReadTime = lastReadTime![userId];
-    if (userLastReadTime == null) {
-      return lastMessageTime != null;
+
+    // If lastReadTime is null or user's lastReadTime doesn't exist,
+    // check if there's a message (if so, it's unread)
+    if (lastReadTime == null || lastReadTime![userId] == null) {
+      return true;
     }
-    
-    return lastMessageTime!.millisecondsSinceEpoch > userLastReadTime.millisecondsSinceEpoch;
+
+    final userLastReadTime = lastReadTime![userId]!;
+
+    // If the last message time is after the user's last read time, there are unread messages
+    return lastMessageTime!.millisecondsSinceEpoch >
+        userLastReadTime.millisecondsSinceEpoch;
   }
 }
 
@@ -188,10 +195,13 @@ class GroupSettings {
   }) {
     return GroupSettings(
       onlyAdminsCanMessage: onlyAdminsCanMessage ?? this.onlyAdminsCanMessage,
-      onlyAdminsCanAddMembers: onlyAdminsCanAddMembers ?? this.onlyAdminsCanAddMembers,
-      onlyAdminsCanEditInfo: onlyAdminsCanEditInfo ?? this.onlyAdminsCanEditInfo,
+      onlyAdminsCanAddMembers:
+          onlyAdminsCanAddMembers ?? this.onlyAdminsCanAddMembers,
+      onlyAdminsCanEditInfo:
+          onlyAdminsCanEditInfo ?? this.onlyAdminsCanEditInfo,
       disappearingMessages: disappearingMessages ?? this.disappearingMessages,
-      disappearingMessagesDuration: disappearingMessagesDuration ?? this.disappearingMessagesDuration,
+      disappearingMessagesDuration:
+          disappearingMessagesDuration ?? this.disappearingMessagesDuration,
     );
   }
 }

@@ -53,7 +53,8 @@ class GroupChatState extends Equatable {
       typingUserId: typingUserId ?? this.typingUserId,
       hasMoreMessages: hasMoreMessages ?? this.hasMoreMessages,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-      replyingToMessage: clearReply ? null : (replyingToMessage ?? this.replyingToMessage),
+      replyingToMessage:
+          clearReply ? null : (replyingToMessage ?? this.replyingToMessage),
     );
   }
 

@@ -13,31 +13,34 @@ class GroupListTile extends StatelessWidget {
     required this.currentUserId,
     required this.onTap,
   });
-
   String _getLastMessageTime() {
     if (group.lastMessageTime == null) return '';
-    
+
     final now = DateTime.now();
     final messageTime = group.lastMessageTime!.toDate();
     final difference = now.difference(messageTime);
 
     if (difference.inDays > 0) {
       return DateFormat('MMM dd').format(messageTime);
-    } else if (difference.inHours > 0) {
-      return DateFormat('HH:mm').format(messageTime);
     } else {
-      return DateFormat('HH:mm').format(messageTime);
+      return DateFormat('h:mm a').format(messageTime);
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final bool hasUnreadMessages = group.hasUnreadMessages(currentUserId);
     final int memberCount = group.members.length;
-    
+
     return Column(
       children: [
         ListTile(
-          tileColor: const Color(0xFFECF2F4),
+          tileColor:
+              hasUnreadMessages
+                  ? const Color(
+                    0xFFE3F2FD,
+                  ) // Light bluish tone for unread messages
+                  : const Color(0xFFECF2F4), // Original color for read messages
           contentPadding: const EdgeInsets.symmetric(
             vertical: 8,
             horizontal: 16,
@@ -45,18 +48,20 @@ class GroupListTile extends StatelessWidget {
           onTap: onTap,
           leading: CircleAvatar(
             backgroundColor: Theme.of(context).primaryColorDark,
-            backgroundImage: group.groupImageUrl != null 
-                ? NetworkImage(group.groupImageUrl!)
-                : null,
-            child: group.groupImageUrl == null 
-                ? Text(
-                    group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G',
-                    style: TextStyle(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      fontSize: 20,
-                    ),
-                  )
-                : null,
+            backgroundImage:
+                group.groupImageUrl != null
+                    ? NetworkImage(group.groupImageUrl!)
+                    : null,
+            child:
+                group.groupImageUrl == null
+                    ? Text(
+                      group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G',
+                      style: TextStyle(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        fontSize: 20,
+                      ),
+                    )
+                    : null,
           ),
           title: Row(
             children: [
@@ -64,28 +69,23 @@ class GroupListTile extends StatelessWidget {
                 child: Text(
                   group.name,
                   style: TextStyle(
-                    fontWeight: hasUnreadMessages ? FontWeight.bold : FontWeight.w500,
+                    fontWeight:
+                        hasUnreadMessages ? FontWeight.bold : FontWeight.w500,
                     fontSize: 16,
-                    color: hasUnreadMessages 
-                        ? Theme.of(context).primaryColor 
-                        : Theme.of(context).textTheme.titleMedium?.color,
+                    color:
+                        hasUnreadMessages
+                            ? Theme.of(context).primaryColor
+                            : Theme.of(context).textTheme.titleMedium?.color,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(
-                Icons.group,
-                size: 16,
-                color: Colors.grey[600],
-              ),
+              Icon(Icons.group, size: 16, color: Colors.grey[600]),
               const SizedBox(width: 4),
               Text(
                 '$memberCount',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -97,10 +97,12 @@ class GroupListTile extends StatelessWidget {
                 group.lastMessage ?? 'No messages yet',
                 style: TextStyle(
                   fontSize: 14,
-                  color: hasUnreadMessages 
-                      ? Theme.of(context).primaryColor 
-                      : Colors.grey[600],
-                  fontWeight: hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
+                  color:
+                      hasUnreadMessages
+                          ? Theme.of(context).primaryColor
+                          : Colors.grey[600],
+                  fontWeight:
+                      hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -116,10 +118,12 @@ class GroupListTile extends StatelessWidget {
                   _getLastMessageTime(),
                   style: TextStyle(
                     fontSize: 12,
-                    color: hasUnreadMessages 
-                        ? Theme.of(context).primaryColor 
-                        : Colors.grey[600],
-                    fontWeight: hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
+                    color:
+                        hasUnreadMessages
+                            ? Theme.of(context).primaryColor
+                            : Colors.grey[600],
+                    fontWeight:
+                        hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
                   ),
                 ),
               const SizedBox(height: 4),
@@ -132,10 +136,7 @@ class GroupListTile extends StatelessWidget {
                   ),
                   child: Text(
                     '•',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 8),
                   ),
                 ),
             ],
@@ -144,7 +145,7 @@ class GroupListTile extends StatelessWidget {
         const Divider(
           height: 0,
           thickness: 2,
-          indent: 20,   
+          indent: 20,
           endIndent: 20,
           color: Color(0xFFE0E0E0),
         ),

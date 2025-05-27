@@ -19,46 +19,53 @@ class GroupChatCubit extends Cubit<GroupChatState> {
     required GroupRepository groupRepository,
     required this.currentUserId,
     required this.currentUserName,
-  })  : _groupRepository = groupRepository,
-        super(const GroupChatState());
+  }) : _groupRepository = groupRepository,
+       super(const GroupChatState());
 
   void enterGroup(String groupId) async {
     _isInGroup = true;
     emit(state.copyWith(status: GroupChatStatus.loading));
-    
+
     try {
       final group = await _groupRepository.getGroup(groupId);
       if (group == null) {
-        emit(state.copyWith(
-          status: GroupChatStatus.error,
-          error: "Group not found",
-        ));
+        emit(
+          state.copyWith(
+            status: GroupChatStatus.error,
+            error: "Group not found",
+          ),
+        );
         return;
       }
 
       if (!group.isMember(currentUserId)) {
-        emit(state.copyWith(
-          status: GroupChatStatus.error,
-          error: "You are not a member of this group",
-        ));
+        emit(
+          state.copyWith(
+            status: GroupChatStatus.error,
+            error: "You are not a member of this group",
+          ),
+        );
         return;
       }
 
-      emit(state.copyWith(
-        groupId: groupId,
-        group: group,
-        status: GroupChatStatus.loaded,
-      ));
+      emit(
+        state.copyWith(
+          groupId: groupId,
+          group: group,
+          status: GroupChatStatus.loaded,
+        ),
+      );
 
       // Subscribe to updates
       _subscribeToMessages(groupId);
       _subscribeToTypingStatus(groupId);
-
     } catch (e) {
-      emit(state.copyWith(
-        status: GroupChatStatus.error,
-        error: "Failed to load group: $e",
-      ));
+      emit(
+        state.copyWith(
+          status: GroupChatStatus.error,
+          error: "Failed to load group: $e",
+        ),
+      );
     }
   }
 
@@ -70,10 +77,12 @@ class GroupChatCubit extends Cubit<GroupChatState> {
     if (state.groupId == null || state.group == null) return;
 
     final group = state.group!;
-    
+
     // Check if user can send messages
     if (group.settings.onlyAdminsCanMessage && !group.isAdmin(currentUserId)) {
-      emit(state.copyWith(error: "Only admins can send messages in this group"));
+      emit(
+        state.copyWith(error: "Only admins can send messages in this group"),
+      );
       return;
     }
 
@@ -106,20 +115,23 @@ class GroupChatCubit extends Cubit<GroupChatState> {
   void clearReply() {
     emit(state.copyWith(clearReply: true));
   }
+
   Future<void> loadMoreMessages() async {
     if (state.status != GroupChatStatus.loaded ||
         state.messages.isEmpty ||
         !state.hasMoreMessages ||
-        state.isLoadingMore) return;
+        state.isLoadingMore)
+      return;
 
     try {
       emit(state.copyWith(isLoadingMore: true));
 
       final lastMessage = state.messages.last;
-      final lastDoc = await _groupRepository
-          .getGroupMessages(state.groupId!)
-          .doc(lastMessage.id)
-          .get();
+      final lastDoc =
+          await _groupRepository
+              .getGroupMessages(state.groupId!)
+              .doc(lastMessage.id)
+              .get();
 
       final moreMessages = await _groupRepository.getMoreGroupMessages(
         state.groupId!,
@@ -131,18 +143,23 @@ class GroupChatCubit extends Cubit<GroupChatState> {
         return;
       }
 
-      emit(state.copyWith(
-        messages: [...state.messages, ...moreMessages],
-        hasMoreMessages: moreMessages.length >= 20,
-        isLoadingMore: false,
-      ));
+      emit(
+        state.copyWith(
+          messages: [...state.messages, ...moreMessages],
+          hasMoreMessages: moreMessages.length >= 20,
+          isLoadingMore: false,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        error: "Failed to load more messages",
-        isLoadingMore: false,
-      ));
+      emit(
+        state.copyWith(
+          error: "Failed to load more messages",
+          isLoadingMore: false,
+        ),
+      );
     }
   }
+
   void _subscribeToMessages(String groupId) {
     _messageSubscription?.cancel();
     _messageSubscription = _groupRepository
@@ -155,10 +172,12 @@ class GroupChatCubit extends Cubit<GroupChatState> {
             emit(state.copyWith(messages: messages, error: null));
           },
           onError: (error) {
-            emit(state.copyWith(
-              error: "Failed to load messages",
-              status: GroupChatStatus.error,
-            ));
+            emit(
+              state.copyWith(
+                error: "Failed to load messages",
+                status: GroupChatStatus.error,
+              ),
+            );
           },
         );
   }
@@ -172,10 +191,12 @@ class GroupChatCubit extends Cubit<GroupChatState> {
             final isTyping = status["isTyping"] as bool;
             final typingUserId = status["typingUserId"] as String?;
 
-            emit(state.copyWith(
-              isTyping: isTyping && typingUserId != currentUserId,
-              typingUserId: typingUserId,
-            ));
+            emit(
+              state.copyWith(
+                isTyping: isTyping && typingUserId != currentUserId,
+                typingUserId: typingUserId,
+              ),
+            );
           },
           onError: (error) {
             print("Error getting typing status: $error");
@@ -214,9 +235,10 @@ class GroupChatCubit extends Cubit<GroupChatState> {
     if (state.groupId == null || state.group == null) return;
 
     final group = state.group!;
-    
+
     // Check permissions
-    if (group.settings.onlyAdminsCanAddMembers && !group.isAdmin(currentUserId)) {
+    if (group.settings.onlyAdminsCanAddMembers &&
+        !group.isAdmin(currentUserId)) {
       emit(state.copyWith(error: "Only admins can add members"));
       return;
     }
@@ -236,7 +258,7 @@ class GroupChatCubit extends Cubit<GroupChatState> {
     if (state.groupId == null || state.group == null) return;
 
     final group = state.group!;
-    
+
     // Check permissions (only admins can remove, and creator can remove anyone)
     if (!group.isAdmin(currentUserId)) {
       emit(state.copyWith(error: "Only admins can remove members"));
@@ -271,7 +293,7 @@ class GroupChatCubit extends Cubit<GroupChatState> {
     if (state.groupId == null || state.group == null) return;
 
     final group = state.group!;
-    
+
     // Only existing admins or creator can make someone admin
     if (!group.isAdmin(currentUserId)) {
       emit(state.copyWith(error: "Only admins can promote members"));
@@ -293,10 +315,12 @@ class GroupChatCubit extends Cubit<GroupChatState> {
     if (state.groupId == null || state.group == null) return;
 
     final group = state.group!;
-    
+
     // Only creator can remove admin privileges
     if (!group.isCreator(currentUserId)) {
-      emit(state.copyWith(error: "Only group creator can remove admin privileges"));
+      emit(
+        state.copyWith(error: "Only group creator can remove admin privileges"),
+      );
       return;
     }
 

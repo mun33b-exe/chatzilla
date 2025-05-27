@@ -13,28 +13,32 @@ class GroupsCubit extends Cubit<GroupsState> {
   GroupsCubit({
     required GroupRepository groupRepository,
     required this.currentUserId,
-  })  : _groupRepository = groupRepository,
-        super(const GroupsState());
+  }) : _groupRepository = groupRepository,
+       super(const GroupsState());
 
   void loadGroups() {
     emit(state.copyWith(status: GroupsStatus.loading));
-    
+
     _groupsSubscription?.cancel();
     _groupsSubscription = _groupRepository
         .getUserGroups(currentUserId)
         .listen(
           (groups) {
-            emit(state.copyWith(
-              status: GroupsStatus.loaded,
-              groups: groups,
-              error: null,
-            ));
+            emit(
+              state.copyWith(
+                status: GroupsStatus.loaded,
+                groups: groups,
+                error: null,
+              ),
+            );
           },
           onError: (error) {
-            emit(state.copyWith(
-              status: GroupsStatus.error,
-              error: "Failed to load groups: $error",
-            ));
+            emit(
+              state.copyWith(
+                status: GroupsStatus.error,
+                error: "Failed to load groups: $error",
+              ),
+            );
           },
         );
   }

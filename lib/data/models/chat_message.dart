@@ -38,7 +38,8 @@ class ChatMessage {
     this.replyToSenderName,
     this.chatType = ChatType.individual,
     this.senderName,
-  });  factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
+  });
+  factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ChatMessage(
       id: doc.id,
@@ -66,7 +67,8 @@ class ChatMessage {
       ),
       senderName: data['senderName'] as String?,
     );
-  }  Map<String, dynamic> toMap() {
+  }
+  Map<String, dynamic> toMap() {
     return {
       "chatRoomId": chatRoomId,
       "senderId": senderId,
@@ -84,6 +86,7 @@ class ChatMessage {
       "senderName": senderName,
     };
   }
+
   ChatMessage copyWith({
     String? id,
     String? chatRoomId,

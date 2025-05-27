@@ -20,7 +20,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ChatRepository _chatRepository = getIt<ChatRepository>();
   final GroupRepository _groupRepository = getIt<GroupRepository>();
-  
+
   List<ChatRoomModel> _filteredChats = [];
   List<GroupModel> _filteredGroups = [];
   List<ChatRoomModel> _allChats = [];
@@ -43,16 +43,16 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       // Load chats
       final chatsStream = _chatRepository.getChatRooms(_currentUserId);
       final chatsSnapshot = await chatsStream.first;
-      
+
       // Load groups
       final groupsStream = _groupRepository.getUserGroups(_currentUserId);
       final groupsSnapshot = await groupsStream.first;
-      
+
       setState(() {
         _allChats = chatsSnapshot;
         _allGroups = groupsSnapshot;
@@ -62,15 +62,15 @@ class _SearchScreenState extends State<SearchScreen> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading data: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
     }
   }
 
   void _onSearchChanged() {
     final query = _searchController.text.toLowerCase().trim();
-    
+
     if (query.isEmpty) {
       setState(() {
         _filteredChats = _allChats;
@@ -78,25 +78,28 @@ class _SearchScreenState extends State<SearchScreen> {
       });
       return;
     }
-    
+
     setState(() {
       // Filter chats by participant names or last message
-      _filteredChats = _allChats.where((chat) {
-        final otherUserId = chat.participants.firstWhere(
-          (id) => id != _currentUserId,
-          orElse: () => '',
-        );
-        final otherUserName = chat.participantsName?[otherUserId] ?? '';
-        final lastMessage = chat.lastMessage ?? '';
-        
-        return otherUserName.toLowerCase().contains(query) ||
-               lastMessage.toLowerCase().contains(query);
-      }).toList();
-      
+      _filteredChats =
+          _allChats.where((chat) {
+            final otherUserId = chat.participants.firstWhere(
+              (id) => id != _currentUserId,
+              orElse: () => '',
+            );
+            final otherUserName = chat.participantsName?[otherUserId] ?? '';
+            final lastMessage = chat.lastMessage ?? '';
+
+            return otherUserName.toLowerCase().contains(query) ||
+                lastMessage.toLowerCase().contains(query);
+          }).toList();
+
       // Filter groups by name or description
-      _filteredGroups = _allGroups.where((group) {      return group.name.toLowerCase().contains(query) ||
-               group.description.toLowerCase().contains(query);
-      }).toList();
+      _filteredGroups =
+          _allGroups.where((group) {
+            return group.name.toLowerCase().contains(query) ||
+                group.description.toLowerCase().contains(query);
+          }).toList();
     });
   }
 
@@ -126,25 +129,22 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildSearchResults(),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _buildSearchResults(),
     );
   }
 
   Widget _buildSearchResults() {
     final hasResults = _filteredChats.isNotEmpty || _filteredGroups.isNotEmpty;
-    
+
     if (!hasResults && _searchController.text.isNotEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.grey,
-            ),
+            Icon(Icons.search_off, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               'No results found',
@@ -163,23 +163,21 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       );
     }
-    
+
     if (_searchController.text.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search,
-              size: 64,
-              color: Colors.grey,
-            ),
+            Icon(Icons.search, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               'Search ChatZilla',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 24,
                 color: Colors.grey,
+                fontFamily: 'Billabong',
+                letterSpacing: 1.8,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -192,7 +190,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       );
     }
-    
+
     return ListView(
       children: [
         // Groups Section
@@ -211,7 +209,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ..._filteredGroups.map((group) => _buildGroupTile(group)),
           const Divider(),
         ],
-        
+
         // Chats Section
         if (_filteredChats.isNotEmpty) ...[
           Padding(
@@ -243,9 +241,10 @@ class _SearchScreenState extends State<SearchScreen> {
       title: Text(
         group.name,
         style: const TextStyle(fontWeight: FontWeight.w600),
-      ),      subtitle: Text(
-        group.description.isNotEmpty 
-            ? group.description 
+      ),
+      subtitle: Text(
+        group.description.isNotEmpty
+            ? group.description
             : '${group.members.length} members',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -253,10 +252,7 @@ class _SearchScreenState extends State<SearchScreen> {
       trailing: const Icon(Icons.group),
       onTap: () {
         getIt<AppRouter>().push(
-          GroupChatScreen(
-            groupId: group.id,
-            groupName: group.name,
-          ),
+          GroupChatScreen(groupId: group.id, groupName: group.name),
         );
       },
     );
@@ -268,7 +264,7 @@ class _SearchScreenState extends State<SearchScreen> {
       orElse: () => 'Unknown',
     );
     final otherUserName = chat.participantsName?[otherUserId] ?? 'Unknown User';
-    
+
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: Theme.of(context).primaryColorDark,
