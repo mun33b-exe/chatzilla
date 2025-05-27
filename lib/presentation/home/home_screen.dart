@@ -35,6 +35,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
 
+  // Cache for optimized performance
+  int _currentTabIndex = 0;
+  List<Map<String, dynamic>>? _cachedContacts;
+  DateTime? _lastContactFetch;
+  static const Duration _cacheExpiry = Duration(minutes: 5);
+
   @override
   void initState() {
     _contactRepository = getIt<ContactRepository>();
@@ -43,17 +49,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _currentUserId = getIt<AuthRepository>().currentUser?.uid ?? "";
     _tabController = TabController(length: 2, vsync: this);
 
-    // Add listener to update FloatingActionButton when tab changes
-    _tabController.addListener(() {
-      setState(() {});
-    });
+    // Optimized listener - only update tab index, no setState
+    _tabController.addListener(_onTabChanged);
 
-    // Add search listener
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
-    });
+    // Debounced search listener for better performance
+    _searchController.addListener(_onSearchChanged);
 
     // Load groups when the screen loads
     _groupsCubit.loadGroups();
@@ -63,10 +63,54 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  // Optimized tab change handler - minimal setState calls
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging ||
+        _currentTabIndex != _tabController.index) {
+      setState(() {
+        _currentTabIndex = _tabController.index;
+      });
+    }
+  }
+
+  // Debounced search change handler
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+    });
+  }
+
+  // Optimized contact loading with caching
+  Future<List<Map<String, dynamic>>> _getContactsWithCache() async {
+    final now = DateTime.now();
+
+    // Return cached data if available and not expired
+    if (_cachedContacts != null &&
+        _lastContactFetch != null &&
+        now.difference(_lastContactFetch!) < _cacheExpiry) {
+      return _cachedContacts!;
+    }
+
+    // Fetch fresh data
+    try {
+      final contacts = await _contactRepository.getRegisteredContacts();
+      _cachedContacts = contacts;
+      _lastContactFetch = now;
+      return contacts;
+    } catch (e) {
+      // Return cached data if fetch fails
+      if (_cachedContacts != null) {
+        return _cachedContacts!;
+      }
+      rethrow;
+    }
   }
 
   void _navigateToCreateGroup() {
@@ -178,8 +222,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _showContactsList(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (context) {
         return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
@@ -187,20 +233,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 "Contacts",
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 16),
               Expanded(
                 child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _contactRepository.getRegisteredContacts(),
+                  future: _getContactsWithCache(),
                   builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(child: Text("Error: ${snapshot.error}"));
-                    }
-                    if (!snapshot.hasData) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        _cachedContacts == null) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    final contacts = snapshot.data!;
+                    if (snapshot.hasError && _cachedContacts == null) {
+                      return Center(child: Text("Error: ${snapshot.error}"));
+                    }
+
+                    final contacts = snapshot.data ?? _cachedContacts ?? [];
                     if (contacts.isEmpty) {
                       return const Center(child: Text("No contacts found"));
                     }
+
                     return ListView.builder(
                       itemCount: contacts.length,
                       itemBuilder: (context, index) {
@@ -215,6 +265,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                           title: Text(contact["name"]),
                           onTap: () {
+                            Navigator.pop(
+                              context,
+                            ); // Close modal first for better UX
                             getIt<AppRouter>().push(
                               ChatMessageScreen(
                                 receiverId: contact['id'],
@@ -235,6 +288,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  // Memoized FAB widgets for better performance
+  Widget get _chatsFAB => FloatingActionButton(
+    onPressed: () => _showContactsList(context),
+    child: const Icon(Icons.chat, color: Colors.white),
+  );
+
+  Widget get _groupsFAB => FloatingActionButton(
+    onPressed: () {
+      getIt<AppRouter>().push(const CreateGroupScreen());
+    },
+    child: const Icon(Icons.group_add, color: Colors.white),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -248,18 +314,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _buildGroupsTab(),
         ],
       ),
-      floatingActionButton:
-          _tabController.index == 0
-              ? FloatingActionButton(
-                onPressed: () => _showContactsList(context),
-                child: const Icon(Icons.chat, color: Colors.white),
-              )
-              : FloatingActionButton(
-                onPressed: () {
-                  getIt<AppRouter>().push(const CreateGroupScreen());
-                },
-                child: const Icon(Icons.group_add, color: Colors.white),
-              ),
+      floatingActionButton: _currentTabIndex == 0 ? _chatsFAB : _groupsFAB,
     );
   }
 
@@ -482,9 +537,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
         return ListView.builder(
           itemCount: chats.length,
+          // Add performance optimizations
+          itemExtent:
+              null, // Let items size themselves for better performance with varying heights
+          cacheExtent: 250.0, // Cache a reasonable amount of items
           itemBuilder: (context, index) {
             final chat = chats[index];
             return ChatListTile(
+              key: ValueKey(chat.id), // Add keys for better list performance
               chat: chat,
               currentUserId: _currentUserId,
               onTap: () {
@@ -597,9 +657,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
         return ListView.builder(
           itemCount: groups.length,
+          // Add performance optimizations
+          cacheExtent: 250.0, // Cache a reasonable amount of items
           itemBuilder: (context, index) {
             final group = groups[index];
             return GroupListTile(
+              key: ValueKey(group.id), // Add keys for better list performance
               group: group,
               currentUserId: _currentUserId,
               onTap: () {

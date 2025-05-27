@@ -59,7 +59,9 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels <= 200) {
+    // In reversed ListView, load more when scrolling towards older messages (maxScrollExtent)
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       _groupChatCubit.loadMoreMessages();
     }
   }
@@ -79,7 +81,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
+        0.0, // In reversed ListView, 0 is the bottom (newest messages)
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeOutCubic,
       );
@@ -151,15 +153,17 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     List<Widget> widgets = [];
     String? lastDateString;
 
-    // Reverse messages since they come from Firestore in descending order (newest first)
-    // but we want to display them chronologically (oldest first)
-    final reversedMessages = messages.reversed.toList();
+    // Sort messages by timestamp to ensure chronological order
+    final sortedMessages = List<ChatMessage>.from(messages)
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
-    for (int i = 0; i < reversedMessages.length; i++) {
-      final message = reversedMessages[i];
+    // Process messages in chronological order for correct date separator placement
+    for (int i = 0; i < sortedMessages.length; i++) {
+      final message = sortedMessages[i];
       final messageDate = message.timestamp.toDate();
       final dateString = DateFormat('MMM dd, yyyy').format(messageDate);
 
+      // Add date separator when date changes
       if (lastDateString != dateString) {
         widgets.add(_buildDateSeparator(dateString));
         lastDateString = dateString;
@@ -168,7 +172,10 @@ class _GroupChatScreenState extends State<GroupChatScreen>
       widgets.add(_buildMessageBubble(message));
     }
 
-    return widgets;
+    // For ListView(reverse: true), reverse the entire widget list
+    // This makes newest messages appear at bottom while maintaining
+    // correct chronological order within each day
+    return widgets.reversed.toList();
   }
 
   Widget _buildDateSeparator(String dateString) {
@@ -336,7 +343,8 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                 Expanded(
                   child: ListView(
                     controller: _scrollController,
-                    reverse: false,
+                    reverse:
+                        true, // Messages appear at bottom, scroll up for older
                     physics: const BouncingScrollPhysics(),
                     children: _buildMessageWidgets(state.messages),
                   ),

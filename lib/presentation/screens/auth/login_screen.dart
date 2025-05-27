@@ -46,7 +46,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-    
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a password';
@@ -58,17 +57,28 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> handleSignIn() async {
+    // Immediately unfocus to hide keyboard and improve UX
     FocusScope.of(context).unfocus();
+
     if (_formKey.currentState?.validate() ?? false) {
       try {
+        // Show loading state immediately through cubit
         await getIt<AuthCubit>().signIn(
-          email: emailController.text,
+          email: emailController.text.trim(), // Trim whitespace
           password: passwordController.text,
         );
+        // Success handling is done in BlocListener
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        // Error handling is done in BlocListener, but show immediate feedback for network issues
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
     } else {
       print("form validation failed");
@@ -140,16 +150,28 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 30),
                     CustomButton(
-                      onPressed: handleSignIn,
+                      onPressed:
+                          state.status == AuthStatus.loading
+                              ? null
+                              : handleSignIn,
                       text: 'Login',
                       child:
                           state.status == AuthStatus.loading
-                              ? const CircularProgressIndicator(
-                                color: Colors.white,
+                              ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.0,
+                                ),
                               )
                               : const Text(
                                 "Login",
-                                style: TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                     ),
                     const SizedBox(height: 20),
@@ -170,12 +192,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               recognizer:
                                   TapGestureRecognizer()
                                     ..onTap = () {
-                                        
-                                        
-                                        
-                                        
-                                        
-                                        
                                       getIt<AppRouter>().push(
                                         const SignupScreen(),
                                       );

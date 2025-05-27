@@ -20,10 +20,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _descriptionController = TextEditingController();
   final ContactRepository _contactRepository = getIt<ContactRepository>();
   final String _currentUserId = getIt<AuthRepository>().currentUser?.uid ?? "";
-
   List<Map<String, dynamic>> _contacts = [];
   Set<String> _selectedMembers = {};
   bool _isLoading = false;
+  bool _isLoadingContacts = true;
 
   @override
   void initState() {
@@ -33,25 +33,49 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
   Future<void> _loadContacts() async {
     try {
-      final contacts = await _contactRepository.getRegisteredContacts();
-      setState(() {
-        _contacts = contacts;
-      });
+      // Add timeout to prevent indefinite loading
+      final contacts = await _contactRepository.getRegisteredContacts().timeout(
+        const Duration(seconds: 10),
+      );
+      if (mounted) {
+        setState(() {
+          _contacts = contacts;
+          _isLoadingContacts = false;
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to load contacts: $e')));
+      if (mounted) {
+        setState(() {
+          _isLoadingContacts = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load contacts: ${e.toString()}'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () {
+                setState(() {
+                  _isLoadingContacts = true;
+                });
+                _loadContacts();
+              },
+            ),
+          ),
+        );
+      }
     }
   }
 
   void _toggleMember(String memberId) {
-    setState(() {
-      if (_selectedMembers.contains(memberId)) {
-        _selectedMembers.remove(memberId);
-      } else {
-        _selectedMembers.add(memberId);
-      }
-    });
+    if (mounted) {
+      setState(() {
+        if (_selectedMembers.contains(memberId)) {
+          _selectedMembers.remove(memberId);
+        } else {
+          _selectedMembers.add(memberId);
+        }
+      });
+    }
   }
 
   Future<void> _createGroup() async {
@@ -107,11 +131,14 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         foregroundColor: Colors.white,
         actions: [
           TextButton(
-            onPressed: _isLoading ? null : _createGroup,
+            onPressed: (_isLoading || _isLoadingContacts) ? null : _createGroup,
             child: Text(
               'Create',
               style: TextStyle(
-                color: Colors.white,
+                color:
+                    (_isLoading || _isLoadingContacts)
+                        ? Colors.grey
+                        : Colors.white,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -248,10 +275,15 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                               ),
                             ),
                           ),
-                        const SizedBox(height: 16),
-
-                        // Contacts List
-                        if (_contacts.isEmpty)
+                        const SizedBox(height: 16), // Contacts List
+                        if (_isLoadingContacts)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(32.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        else if (_contacts.isEmpty)
                           const Center(
                             child: Padding(
                               padding: EdgeInsets.all(32.0),
