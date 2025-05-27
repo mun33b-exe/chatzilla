@@ -1,14 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum MessageType { text, image, video }
+enum MessageType { text, image, video, systemMessage }
 
 enum MessageStatus { sent, read }
+
+enum ChatType { individual, group }
 
 class ChatMessage {
   final String id;
   final String chatRoomId;
   final String senderId;
-  final String receiverId;
+  final String receiverId; // For individual chats, for groups this can be empty
   final String content;
   final MessageType type;
   final MessageStatus status;
@@ -18,7 +20,8 @@ class ChatMessage {
   final String? replyToContent;
   final String? replyToSenderId;
   final String? replyToSenderName;
-
+  final ChatType chatType;
+  final String? senderName; // For group messages to show sender name
   ChatMessage({
     required this.id,
     required this.chatRoomId,
@@ -33,14 +36,15 @@ class ChatMessage {
     this.replyToContent,
     this.replyToSenderId,
     this.replyToSenderName,
-  });
-  factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
+    this.chatType = ChatType.individual,
+    this.senderName,
+  });  factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ChatMessage(
       id: doc.id,
       chatRoomId: data['chatRoomId'] as String,
       senderId: data['senderId'] as String,
-      receiverId: data['receiverId'] as String,
+      receiverId: data['receiverId'] as String? ?? '',
       content: data['content'] as String,
       type: MessageType.values.firstWhere(
         (e) => e.toString() == data['type'],
@@ -56,9 +60,13 @@ class ChatMessage {
       replyToContent: data['replyToContent'] as String?,
       replyToSenderId: data['replyToSenderId'] as String?,
       replyToSenderName: data['replyToSenderName'] as String?,
+      chatType: ChatType.values.firstWhere(
+        (e) => e.toString() == data['chatType'],
+        orElse: () => ChatType.individual,
+      ),
+      senderName: data['senderName'] as String?,
     );
-  }
-  Map<String, dynamic> toMap() {
+  }  Map<String, dynamic> toMap() {
     return {
       "chatRoomId": chatRoomId,
       "senderId": senderId,
@@ -72,9 +80,10 @@ class ChatMessage {
       "replyToContent": replyToContent,
       "replyToSenderId": replyToSenderId,
       "replyToSenderName": replyToSenderName,
+      "chatType": chatType.toString(),
+      "senderName": senderName,
     };
   }
-
   ChatMessage copyWith({
     String? id,
     String? chatRoomId,
@@ -89,6 +98,8 @@ class ChatMessage {
     String? replyToContent,
     String? replyToSenderId,
     String? replyToSenderName,
+    ChatType? chatType,
+    String? senderName,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -104,6 +115,8 @@ class ChatMessage {
       replyToContent: replyToContent ?? this.replyToContent,
       replyToSenderId: replyToSenderId ?? this.replyToSenderId,
       replyToSenderName: replyToSenderName ?? this.replyToSenderName,
+      chatType: chatType ?? this.chatType,
+      senderName: senderName ?? this.senderName,
     );
   }
 }
