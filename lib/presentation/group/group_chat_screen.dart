@@ -185,13 +185,13 @@ class _GroupChatScreenState extends State<GroupChatScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.grey[300],
+            color: Theme.of(context).primaryColorDark,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             dateString,
             style: TextStyle(
-              color: Colors.grey[700],
+              color: Theme.of(context).scaffoldBackgroundColor,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -319,6 +319,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
         ),
         actions: [
           PopupMenuButton<String>(
+            iconColor: Theme.of(context).scaffoldBackgroundColor,
             icon: const Icon(Icons.more_vert),
             onSelected: (value) async {
               if (value == 'leave_group') {
@@ -340,11 +341,11 @@ class _GroupChatScreenState extends State<GroupChatScreen>
             },
             itemBuilder:
                 (context) => [
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'group_info',
                     child: Row(
                       children: [
-                        Icon(Icons.info),
+                        Icon(Icons.info, color: Theme.of(context).primaryColor),
                         SizedBox(width: 12),
                         Text('Group Info'),
                       ],
@@ -571,13 +572,13 @@ class _GroupChatScreenState extends State<GroupChatScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.grey[300],
+              color: Theme.of(context).primaryColorDark.withOpacity(0.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               message.content,
               style: TextStyle(
-                color: Colors.grey[700],
+                color: Theme.of(context).primaryColor,
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),
@@ -759,6 +760,13 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                     onTap: () {
                       Navigator.pop(context);
                       // TODO: Implement delete message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Delete message feature not implemented Yet',
+                          ),
+                        ),
+                      );
                     },
                   ),
               ],
@@ -781,7 +789,10 @@ class _GroupChatScreenState extends State<GroupChatScreen>
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  backgroundColor: Theme.of(context).primaryColorDark,
+                ),
                 child: const Text('Leave'),
               ),
             ],
