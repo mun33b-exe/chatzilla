@@ -317,6 +317,55 @@ class _GroupChatScreenState extends State<GroupChatScreen>
             );
           },
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) async {
+              if (value == 'leave_group') {
+                await _showLeaveGroupDialog();
+              } else if (value == 'group_info') {
+                if (_groupChatCubit.state.group != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => GroupInfoScreen(
+                            group: _groupChatCubit.state.group!,
+                            currentUserId: _currentUserId,
+                          ),
+                    ),
+                  );
+                }
+              }
+            },
+            itemBuilder:
+                (context) => [
+                  const PopupMenuItem<String>(
+                    value: 'group_info',
+                    child: Row(
+                      children: [
+                        Icon(Icons.info),
+                        SizedBox(width: 12),
+                        Text('Group Info'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'leave_group',
+                    child: Row(
+                      children: [
+                        Icon(Icons.exit_to_app, color: Colors.red),
+                        SizedBox(width: 12),
+                        Text(
+                          'Leave Group',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+          ),
+        ],
       ),
       body: BlocConsumer<GroupChatCubit, GroupChatState>(
         listener: (context, state) {
@@ -716,5 +765,37 @@ class _GroupChatScreenState extends State<GroupChatScreen>
             ),
           ),
     );
+  }
+
+  Future<void> _showLeaveGroupDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Leave Group'),
+            content: const Text('Are you sure you want to leave this group?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Leave'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed == true) {
+      await _groupChatCubit.leaveGroup();
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You have left the group')),
+        );
+      }
+    }
   }
 }
