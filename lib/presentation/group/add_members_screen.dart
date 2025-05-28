@@ -132,9 +132,22 @@ class _AddMembersScreenState extends State<AddMembersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Members'),
+        iconTheme: IconThemeData(
+          color:
+              Theme.of(
+                context,
+              ).scaffoldBackgroundColor, // Change the back button color to white
+        ),
+        title: const Text(
+          'Add Members',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontSize: 20,
+          ),
+        ),
         backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
+        foregroundColor: Theme.of(context).scaffoldBackgroundColor,
         actions: [
           TextButton(
             onPressed:

@@ -126,7 +126,17 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Group'),
+        iconTheme: IconThemeData(
+          color: Theme.of(context).scaffoldBackgroundColor,
+        ),
+        title: Text(
+          'Create Group',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Theme.of(context).scaffoldBackgroundColor,
+          ),
+        ),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         actions: [
@@ -310,7 +320,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                                 child: ListTile(
                                   leading: CircleAvatar(
                                     backgroundColor:
-                                        Theme.of(context).primaryColor,
+                                        Theme.of(context).primaryColorDark,
                                     child: Text(
                                       contact['name'][0].toUpperCase(),
                                       style: const TextStyle(

@@ -128,7 +128,20 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Group'),
+        iconTheme: IconThemeData(
+          color:
+              Theme.of(context).appBarTheme.foregroundColor ??
+              Theme.of(context).scaffoldBackgroundColor,
+        ),
+
+        title: Text(
+          'Edit Group',
+          style: TextStyle(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         actions: [

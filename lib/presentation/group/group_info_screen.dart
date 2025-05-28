@@ -40,7 +40,17 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Group Info'),
+        iconTheme: IconThemeData(
+          color: Theme.of(context).scaffoldBackgroundColor,
+        ),
+        title: Text(
+          'Group Info',
+          style: TextStyle(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         actions: [
@@ -309,7 +319,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.amber,
+                          color: Theme.of(context).primaryColorDark,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Text(
@@ -328,7 +338,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor,
+                          color: Theme.of(context).primaryColorDark,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Text(
@@ -524,7 +534,10 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  backgroundColor: Colors.redAccent,
+                ),
                 child: const Text('Remove'),
               ),
             ],
@@ -571,7 +584,10 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  backgroundColor: Colors.redAccent,
+                ),
                 child: const Text('Leave'),
               ),
             ],
