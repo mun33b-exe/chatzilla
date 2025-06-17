@@ -43,6 +43,8 @@ dependencies:
   flutter_contacts: ^1.1.9+2
   intl: ^0.20.2
   emoji_picker_flutter: ^4.3.0
+  face_sdk_3divi: ^1.5.0
+  firebase_database: ^11.3.7
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
