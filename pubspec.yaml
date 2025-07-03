@@ -45,6 +45,7 @@ dependencies:
   emoji_picker_flutter: ^4.3.0
   face_sdk_3divi: ^1.5.0
   firebase_database: ^11.3.7
+  onesignal_flutter: ^5.3.4
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
