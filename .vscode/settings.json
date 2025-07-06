@@ -1,4 +1,7 @@
 {
     "java.configuration.updateBuildConfiguration": "automatic",
-    "cmake.sourceDirectory": "F:/chatzilla/linux"
+    "cmake.sourceDirectory": "F:/chatzilla/linux",
+    "cSpell.words": [
+        "chatzilla"
+    ]
 }

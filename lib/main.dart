@@ -2,15 +2,10 @@ import 'package:chatzilla/SplashScreen.dart';
 import 'package:chatzilla/config/theme/app_theme.dart';
 import 'package:chatzilla/data/repositories/chat_repository.dart';
 import 'package:chatzilla/data/services/service_locator.dart';
-import 'package:chatzilla/firebase_options.dart';
 import 'package:chatzilla/logic/observer/app_life_cycle_observer.dart';
-import 'package:chatzilla/presentation/screens/auth/login_screen.dart';
 import 'package:chatzilla/router/app_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 void main() async {
   await setupServiceLocator();
