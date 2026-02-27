@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCjS5E5yqch7qzhxciPBnFiPkATknY6AbU',
-    appId: '1:121382459364:android:3de68d54455131504959f1',
+    appId: '1:121382459364:android:2660a83b6734dfa54959f1',
     messagingSenderId: '121382459364',
     projectId: 'chatzilla-2eb30',
     storageBucket: 'chatzilla-2eb30.firebasestorage.app',
@@ -83,4 +83,5 @@ class DefaultFirebaseOptions {
     authDomain: 'chatzilla-2eb30.firebaseapp.com',
     storageBucket: 'chatzilla-2eb30.firebasestorage.app',
   );
+
 }
