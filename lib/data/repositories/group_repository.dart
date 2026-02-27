@@ -1,6 +1,10 @@
+import 'dart:developer';
+
 import 'package:chatzilla/data/models/chat_message.dart';
 import 'package:chatzilla/data/models/group_model.dart';
 import 'package:chatzilla/data/services/base_repository.dart';
+import 'package:chatzilla/data/services/notification_service.dart';
+import 'package:chatzilla/data/services/service_locator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class GroupRepository extends BaseRepository {
@@ -124,6 +128,51 @@ class GroupRepository extends BaseRepository {
     });
 
     await batch.commit();
+
+    // ── Send push notification to group members (fire-and-forget) ─────
+    try {
+      final groupDoc = await _groups.doc(groupId).get();
+      final groupData = groupDoc.data() as Map<String, dynamic>?;
+      final groupName = groupData?['name'] as String? ?? 'Group';
+      final members = List<String>.from(groupData?['members'] ?? []);
+
+      // Remove the sender so they don't get notified for their own message
+      final recipientIds = members.where((id) => id != senderId).toList();
+
+      if (recipientIds.isNotEmpty) {
+        // Batch-fetch fcmTokens for all recipients
+        final subscriptionIds = <String>[];
+        // Firestore 'whereIn' supports up to 30 items
+        for (var i = 0; i < recipientIds.length; i += 30) {
+          final batch = recipientIds.sublist(
+            i,
+            i + 30 > recipientIds.length ? recipientIds.length : i + 30,
+          );
+          final snapshot =
+              await firestore
+                  .collection('users')
+                  .where(FieldPath.documentId, whereIn: batch)
+                  .get();
+          for (final doc in snapshot.docs) {
+            final token = doc.data()['fcmToken'] as String?;
+            if (token != null && token.isNotEmpty) {
+              subscriptionIds.add(token);
+            }
+          }
+        }
+
+        if (subscriptionIds.isNotEmpty) {
+          getIt<NotificationService>().sendGroupNotification(
+            groupName: groupName,
+            senderName: senderName,
+            content: content,
+            subscriptionIds: subscriptionIds,
+          );
+        }
+      }
+    } catch (e) {
+      log('[GroupRepository] Notification error (non-blocking): $e');
+    }
   }
 
   // Send system message (for group events)

@@ -2,6 +2,7 @@ import 'package:chatzilla/data/repositories/auth_repository.dart';
 import 'package:chatzilla/data/repositories/chat_repository.dart';
 import 'package:chatzilla/data/repositories/contact_repository.dart';
 import 'package:chatzilla/data/repositories/group_repository.dart';
+import 'package:chatzilla/data/services/notification_service.dart';
 import 'package:chatzilla/firebase_options.dart';
 import 'package:chatzilla/logic/cubit/auth/auth_cubit.dart';
 import 'package:chatzilla/logic/cubit/chat/chat_cubit.dart';
@@ -19,6 +20,11 @@ final getIt = GetIt.instance;
 Future<void> setupServiceLocator() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // ── OneSignal Notification Service ──────────────────────────────────
+  // TODO: Replace with your real OneSignal App ID from the OneSignal dashboard.
+  getIt.registerLazySingleton(() => NotificationService());
+  getIt<NotificationService>().initialize('e031531f-e118-4f0b-b43d-22a423cea978');
 
   getIt.registerLazySingleton(() => AppRouter());
   getIt.registerLazySingleton<FirebaseFirestore>(
