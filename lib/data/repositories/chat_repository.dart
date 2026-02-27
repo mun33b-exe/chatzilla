@@ -1,7 +1,11 @@
+import 'dart:developer';
+
 import 'package:chatzilla/data/models/chat_message.dart';
 import 'package:chatzilla/data/models/chat_room_model.dart';
 import 'package:chatzilla/data/models/user_model.dart';
 import 'package:chatzilla/data/services/base_repository.dart';
+import 'package:chatzilla/data/services/notification_service.dart';
+import 'package:chatzilla/data/services/service_locator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatRepository extends BaseRepository {
@@ -92,6 +96,31 @@ class ChatRepository extends BaseRepository {
       "lastMessageTime": message.timestamp,
     });
     await batch.commit();
+
+    // ── Send push notification to receiver (fire-and-forget) ──────────
+    try {
+      final receiverDoc =
+          await firestore.collection('users').doc(receiverId).get();
+      final receiverToken = receiverDoc.data()?['fcmToken'] as String?;
+
+      if (receiverToken != null && receiverToken.isNotEmpty) {
+        // Get sender's name from the chat room document
+        final roomDoc = await _chatRooms.doc(chatRoomId).get();
+        final roomData = roomDoc.data() as Map<String, dynamic>?;
+        final participantsName = Map<String, String>.from(
+          roomData?['participantsName'] ?? {},
+        );
+        final senderName = participantsName[senderId] ?? 'Someone';
+
+        getIt<NotificationService>().sendIndividualNotification(
+          senderName: senderName,
+          content: content,
+          subscriptionId: receiverToken,
+        );
+      }
+    } catch (e) {
+      log('[ChatRepository] Notification error (non-blocking): $e');
+    }
   }
 
   Stream<List<ChatMessage>> getMessages(

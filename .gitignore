@@ -33,6 +33,8 @@ migrate_working_dir/
 .pub/
 /build/
 /lib/firebase_options.dart
+/backend/.env
+/backend/.env.example
 
 # Symbolication related
 app.*.symbols
