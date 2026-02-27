@@ -354,8 +354,30 @@ class _ChatMessageScreenState extends State<ChatMessageScreen>
                       }
                       if (state.receiverLastSeen != null) {
                         final lastSeen = state.receiverLastSeen!.toDate();
+                        final now = DateTime.now();
+                        final today = DateTime(now.year, now.month, now.day);
+                        final yesterday = today.subtract(
+                          const Duration(days: 1),
+                        );
+                        final lastSeenDay = DateTime(
+                          lastSeen.year,
+                          lastSeen.month,
+                          lastSeen.day,
+                        );
+                        final time = DateFormat('h:mm a').format(lastSeen);
+
+                        String lastSeenText;
+                        if (lastSeenDay == today) {
+                          lastSeenText = 'last seen at $time';
+                        } else if (lastSeenDay == yesterday) {
+                          lastSeenText = 'last seen yesterday at $time';
+                        } else {
+                          final date = DateFormat('MMM dd').format(lastSeen);
+                          lastSeenText = 'last seen on $date at $time';
+                        }
+
                         return Text(
-                          "last seen at ${DateFormat('h:mm a').format(lastSeen)}",
+                          lastSeenText,
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 14,
