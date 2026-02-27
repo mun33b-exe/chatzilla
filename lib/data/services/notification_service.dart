@@ -11,7 +11,7 @@ class NotificationService {
   //
   // For production, replace with your Render.com URL:
   // e.g. 'https://chatzilla-notifications.onrender.com'
-  static const String _baseUrl = 'http://192.168.1.100:3000';
+  static const String _baseUrl = 'https://chatzilla-backend-b9f198d7e15f.herokuapp.com';
 
   /// Initialize OneSignal with your App ID.
   /// Call this once at app startup (e.g. inside setupServiceLocator).

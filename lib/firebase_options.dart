@@ -50,7 +50,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCjS5E5yqch7qzhxciPBnFiPkATknY6AbU',
+    apiKey: 'AIzaSyC49C2eF7-3JdyGE0hOy3RaMsIpIfpr9uM',
     appId: '1:121382459364:android:2660a83b6734dfa54959f1',
     messagingSenderId: '121382459364',
     projectId: 'chatzilla-2eb30',
